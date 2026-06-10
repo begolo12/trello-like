@@ -3,367 +3,355 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
-<title>Board</title>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<link rel="manifest" href="/manifest.json"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+<title>Kanban</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0f1e;--surface:#131a2b;--surface2:#1a2338;--border:#2a3450;--border2:#3a456a;--text:#e8edf5;--text2:#8896b5;--text3:#5a6a8a;--accent:#4f7dff;--accent2:#6b96ff;--accent-bg:rgba(79,125,255,.12);--red:#f0414a;--orange:#f5a623;--green:#34d399;--radius:10px;--radius2:14px}
-body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-input,textarea,select,button{font-family:inherit}
-header{position:sticky;top:0;z-index:100;background:rgba(10,15,30,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 14px}
-.head-inner{display:flex;align-items:center;gap:8px;height:50px;overflow-x:auto;overflow-y:hidden}
-.head-inner::-webkit-scrollbar{height:0}
-.logo{font-weight:700;font-size:15px;white-space:nowrap;flex-shrink:0;background:linear-gradient(135deg,#4f7dff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-right:4px}
-.board-tab{position:relative;padding:5px 12px;border-radius:18px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;white-space:nowrap;transition:.15s;flex-shrink:0;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden;height:100dvh;display:flex;flex-direction:column}
+input,textarea,button{font-family:inherit;outline:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* HEADER */
+header{flex-shrink:0;background:rgba(10,15,30,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 12px;position:sticky;top:0;z-index:100}
+.head-inner{display:flex;align-items:center;gap:8px;height:50px}
+.logo{font-weight:700;font-size:16px;white-space:nowrap;flex-shrink:0;background:linear-gradient(135deg,#4f7dff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.search-box{flex:1;display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:0 12px;min-width:0}
+.search-box input{flex:1;background:none;border:none;color:var(--text);font-size:13px;padding:7px 4px;min-width:0}
+.search-box input::placeholder{color:var(--text3)}
+
+/* MAIN CONTENT - scrollable between header and bottom bar */
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative}
+.tab-page{display:none;padding:12px;min-height:100%}
+.tab-page.active{display:block}
+
+/* BOTTOM NAV */
+nav{flex-shrink:0;background:rgba(10,15,30,.95);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;padding:2px 0 env(safe-area-inset-bottom,4px);z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0 2px;cursor:pointer;border:none;background:none;color:var(--text3);font-size:10px;transition:.1s;border-top:2px solid transparent}
+.nav-item .nav-icon{font-size:20px;line-height:1}
+.nav-item.active{color:var(--accent2);border-top-color:var(--accent)}
+.nav-item:active{opacity:.6}
+
+/* DASHBOARD */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
+.stat-card .stat-num{font-size:28px;font-weight:700;margin-bottom:2px}
+.stat-card .stat-label{font-size:12px;color:var(--text2)}
+.stat-card.overdue .stat-num{color:var(--red)}
+.stat-card.soon .stat-num{color:var(--orange)}
+.stat-card.ok .stat-num{color:var(--green)}
+.section-title{font-size:14px;font-weight:600;margin:14px 0 8px;color:var(--text2)}
+.list-item{display:flex;justify-content:space-between;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;font-size:13px}
+.list-item .badge{background:var(--surface2);padding:2px 10px;border-radius:20px;font-size:12px;color:var(--text2)}
+
+/* KANBAN */
+.board-tabs{display:flex;gap:6px;overflow-x:auto;padding:0 0 8px;-webkit-overflow-scrolling:touch}
+.board-tabs::-webkit-scrollbar{height:0}
+.board-tab{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative}
 .board-tab.active{background:var(--accent-bg);border-color:var(--accent);color:var(--accent2)}
-.board-tab:hover{background:var(--surface2)}
-.board-tab .close-tab{display:none;position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:50%;background:var(--red);color:#fff;font-size:9px;line-height:15px;text-align:center;border:2px solid var(--bg);cursor:pointer}
-.board-tab:hover .close-tab{display:block}
-.head-btn{padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s}
-.head-btn:hover{background:var(--surface2);color:var(--text)}
-.head-btn.prim{background:var(--accent);border-color:var(--accent);color:#fff;min-height:32px}
-.head-btn.prim:hover{background:var(--accent2)}
-.search-wrap{position:relative;flex-shrink:0}
-.search-wrap input{padding:5px 10px 5px 26px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;outline:none;width:140px;transition:.2s}
-.search-wrap input:focus{width:200px;border-color:var(--accent);background:var(--surface)}
-.search-wrap .ico{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;pointer-events:none}
-.search-overlay{display:none;position:fixed;top:52px;right:16px;width:340px;max-height:340px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);z-index:150;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-.search-overlay.open{display:block}
-.search-result{padding:8px 10px;border-radius:var(--radius);cursor:pointer;transition:.1s;font-size:13px}
-.search-result:hover{background:var(--surface2)}
-.search-result .sr-title{color:var(--text);font-weight:500}
-.search-result .sr-meta{color:var(--text3);font-size:11px;margin-top:2px}
-.search-result+.search-result{border-top:1px solid var(--border);margin-top:6px;padding-top:10px}
-.board-wrap{display:flex;gap:14px;padding:18px;align-items:flex-start;overflow-x:auto;min-height:calc(100vh - 52px);-webkit-overflow-scrolling:touch}
-.board-wrap::-webkit-scrollbar{height:5px}
-.board-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.col{width:290px;min-width:260px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);display:flex;flex-direction:column;max-height:calc(100vh - 78px);transition:opacity .2s}
-.col.archived-mode{border-color:rgba(245,166,35,.25)}
-.col-head{padding:10px 12px 7px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border)}
-.col-head h3{margin:0;font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:2px 4px;border-radius:4px;transition:.1s}
-.col-head h3:hover{background:rgba(255,255,255,.04)}
-.col-head h3.editing{background:rgba(0,0,0,.2);outline:1px solid var(--accent);white-space:normal;word-break:break-word;cursor:text}
+.board-tab .close-tab{display:none;position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--red);color:#fff;font-size:9px;line-height:16px;text-align:center;border:2px solid var(--bg)}
+.board-tab:hover .close-tab,.board-tab.active .close-tab{display:block}
+.board-wrap{display:flex;gap:12px;overflow-x:auto;padding:0 0 12px;align-items:flex-start;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+.col{width:280px;min-width:260px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);display:flex;flex-direction:column;max-height:calc(100dvh - 180px)}
+.col-head{display:flex;align-items:center;gap:6px;padding:10px 10px 6px;border-bottom:1px solid var(--border)}
+.col-head h3{margin:0;font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:2px 4px;border-radius:4px}
+.col-head h3:focus{background:rgba(0,0,0,.2);outline:1px solid var(--accent);white-space:normal;word-break:break-word;cursor:text}
 .col-count{font-size:11px;color:var(--text3);background:var(--surface2);padding:1px 7px;border-radius:10px;flex-shrink:0}
-.col-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:3px;border-radius:5px;transition:.15s;font-size:15px;line-height:1;flex-shrink:0}
+.col-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:14px}
 .col-del:hover{color:var(--red);background:rgba(240,65,74,.1)}
-.col-archived-count{font-size:10px;color:var(--orange);padding:1px 5px;border-radius:8px;background:rgba(245,166,35,.1);flex-shrink:0;cursor:pointer}
-.col-archived-toggle{font-size:10px;color:var(--text3);cursor:pointer;padding:2px 6px;border-radius:6px;border:1px solid transparent;background:none;flex-shrink:0;transition:.15s}
-.col-archived-toggle:hover{border-color:var(--border);color:var(--text2)}
-.col-cards{flex:1;overflow-y:auto;padding:6px 6px 3px;display:flex;flex-direction:column;gap:5px;min-height:36px}
-.col-cards::-webkit-scrollbar{width:4px}
-.col-cards::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.col-add-btn{margin:6px 8px;padding:7px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;font-size:12px;transition:.15s;text-align:center}
-.col-add-btn:hover{background:var(--surface2);color:var(--text2);border-color:var(--border2)}
-.card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;cursor:grab;transition:border-color .15s,opacity .2s,box-shadow .15s;position:relative}
-.card:hover{border-color:var(--border2);background:#1e2840;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.card.dragging{opacity:.35;transform:scale(.96)}
+.col-cards{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:5px;min-height:40px}
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;cursor:grab;transition:border-color .15s;position:relative}
+.card:hover{border-color:var(--border2);background:#1e2840}
+.card.dragging{opacity:.3;transform:scale(.95)}
 .card.drag-over{border-color:var(--accent)!important;box-shadow:0 0 0 2px var(--accent-bg)!important}
-.card.archived{opacity:.55}
-.card.archived .card-title{text-decoration:line-through;color:var(--text3)}
-.card-title{font-size:13px;font-weight:500;margin-bottom:4px;word-break:break-word;line-height:1.4}
-.card-desc{font-size:11px;color:var(--text2);margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card-labels{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
-.card-label{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:500;cursor:pointer;transition:.1s;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card-label:hover{filter:brightness(1.2)}
-.card-assignees{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px}
-.card-assignee{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;cursor:pointer;position:relative;transition:.15s}
-.card-assignee:hover::after{content:'×';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);border-radius:50%;font-size:14px;font-weight:700}
-.add-assignee-btn{width:22px;height:22px;border-radius:50%;border:1px dashed var(--border);background:transparent;color:var(--text3);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
-.add-assignee-btn:hover{border-color:var(--accent);color:var(--accent2)}
-.card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--text3)}
+.card-title{font-size:13px;font-weight:500;margin-bottom:4px;word-break:break-word}
+.card-desc{font-size:11px;color:var(--text2);margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-meta{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:10px;color:var(--text3)}
 .card-meta .due{color:var(--orange)}
 .card-meta .overdue{color:var(--red);font-weight:600}
+.label-pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;color:#fff;margin-right:3px}
+.assignee-pill{display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;line-height:20px;text-align:center;font-weight:600;margin-right:2px}
 .card-actions{display:none;position:absolute;top:6px;right:6px;gap:3px}
 .card:hover .card-actions{display:flex}
-@media(max-width:640px){.card-actions{display:flex;position:static;margin-top:5px}}
-.card-actions button{background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;padding:2px 7px;font-size:10px;transition:.15s;min-height:26px}
-.card-actions button:hover{background:var(--surface2);color:var(--text)}
-.card-actions .del:hover{background:rgba(240,65,74,.15);color:var(--red);border-color:var(--red)}
-.card-actions .arch:hover{background:rgba(245,166,35,.15);color:var(--orange);border-color:var(--orange)}
-.new-card-form{padding:6px;display:none;flex-direction:column;gap:5px}
+@media(max-width:640px){.card-actions{display:flex;position:static;margin-top:4px}}
+.card-actions button{background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;padding:2px 7px;font-size:10px;transition:.15s}
+.card-actions button:hover{opacity:.8}
+.col-add-btn{margin:6px;padding:6px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;font-size:12px;text-align:center}
+.col-add-btn:hover{background:var(--surface2);color:var(--text2)}
+.new-card-form{padding:6px;display:none;flex-direction:column;gap:4px}
 .new-card-form.open{display:flex}
-.new-card-form input,.new-card-form textarea{padding:7px 9px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;outline:none;transition:.15s}
-.new-card-form input:focus,.new-card-form textarea:focus{border-color:var(--accent)}
-.new-card-form textarea{resize:vertical;min-height:40px;font-size:11px}
-.new-card-form .form-actions{display:flex;gap:5px}
-.new-card-form button{padding:6px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;border:none;transition:.15s;min-height:30px}
+.new-card-form input,.new-card-form textarea{padding:7px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px}
+.new-card-form textarea{resize:vertical;min-height:40px}
+.new-card-form .form-actions{display:flex;gap:4px}
+.new-card-form button{padding:6px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;border:none}
 .new-card-form .save{background:var(--accent);color:#fff}
-.new-card-form .save:hover{background:var(--accent2)}
 .new-card-form .cancel{background:transparent;color:var(--text2);border:1px solid var(--border)}
-.new-card-form .cancel:hover{background:var(--surface2);color:var(--text)}
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px}
+
+/* GANTT */
+.gantt-section{margin-bottom:16px}
+.gantt-col-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px;padding:6px 0;border-bottom:1px solid var(--border)}
+.gantt-bar-wrap{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px}
+.gantt-bar-wrap .gantt-label{width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)}
+.gantt-bar{flex:1;height:24px;border-radius:6px;position:relative;min-width:4px;transition:width .3s}
+.gantt-bar .gantt-date{position:absolute;right:-80px;top:3px;font-size:10px;color:var(--text3);white-space:nowrap}
+.gantt-empty{text-align:center;padding:30px;color:var(--text3);font-size:13px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;justify-content:center}
+@media(min-width:640px){.modal-overlay{align-items:center}}
 .modal-overlay.open{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:22px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2) var(--radius2) 0 0;padding:20px;width:100%;max-width:420px;max-height:85vh;overflow-y:auto}
+@media(min-width:640px){.modal{border-radius:var(--radius2)}}
 .modal h2{margin:0 0 14px;font-size:15px;font-weight:600}
 .modal label{display:block;font-size:11px;color:var(--text2);margin-bottom:3px}
-.modal input,.modal textarea,.modal select{width:100%;padding:9px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none;margin-bottom:10px;box-sizing:border-box}
-.modal input:focus,.modal textarea:focus,.modal select:focus{border-color:var(--accent)}
-.modal textarea{resize:vertical;min-height:60px;font-size:12px}
-.modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
-.modal-actions button{padding:7px 16px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;border:none;transition:.15s;min-height:32px}
+.modal input,.modal textarea,.modal select{width:100%;padding:9px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:10px}
+.modal textarea{resize:vertical;min-height:60px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.modal-actions button{padding:8px 16px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;border:none}
 .modal-actions .prim{background:var(--accent);color:#fff}
-.modal-actions .prim:hover{background:var(--accent2)}
 .modal-actions .sec{background:transparent;color:var(--text2);border:1px solid var(--border)}
-.modal-actions .sec:hover{background:var(--surface2);color:var(--text)}
 .modal-actions .danger{background:var(--red);color:#fff}
-.modal-actions .danger:hover{background:#e0353e}
-.modal-actions .ok{background:var(--green);color:#fff}
-.modal-actions .ok:hover{background:#2ec48a}
-.modal .pop-colors{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
-.modal .pop-colors .pc{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.1s}
-.modal .pop-colors .pc.sel{border-color:var(--text)}
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 18px;font-size:12px;color:var(--text2);z-index:300;display:none;white-space:nowrap;animation:toastIn .2s;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 18px;font-size:12px;color:var(--text2);z-index:300;display:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;animation:toastIn .2s}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}}
-.empty-state{padding:36px;text-align:center;color:var(--text3);min-width:280px;width:100%}
-.empty-state p{font-size:13px;margin:0 0 14px}
+
+/* Loading */
 .loading{text-align:center;padding:40px;color:var(--text3);font-size:13px}
-.loading::after{content:'...';animation:dots 1.2s steps(3,end) infinite}
-@keyframes dots{0%,20%{content:''}40%{content:'.'}60%{content:'..'}80%,100%{content:'...'}}
-.label-picker{position:fixed;z-index:180;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:12px;width:240px;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none}
-.label-picker.open{display:block}
-.label-picker h4{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--text2)}
-.label-picker .lp-item{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;transition:.1s;font-size:12px;margin-bottom:3px}
-.label-picker .lp-item:hover{background:var(--surface2)}
-.label-picker .lp-item .lp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.label-picker .lp-item .lp-del{margin-left:auto;color:var(--text3);cursor:pointer;font-size:14px;line-height:1}
-.label-picker .lp-item .lp-del:hover{color:var(--red)}
-.label-picker .lp-add{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
-.label-picker .lp-add input{padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;outline:none;flex:1;min-width:80px}
-.label-picker .lp-add input:focus{border-color:var(--accent)}
-.label-picker .lp-add button{padding:5px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:11px;cursor:pointer}
-.label-picker .lp-add .colors{display:flex;gap:3px;margin-top:4px}
-.label-picker .lp-add .colors span{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.1s}
-.label-picker .lp-add .colors span.sel{border-color:var(--text)}
-@media(max-width:640px){
-  .board-wrap{flex-direction:column;padding:10px;gap:10px}
-  .col{width:100%;min-width:0;max-height:none}
-  .head-inner{gap:6px;flex-wrap:nowrap}
-  .board-tab,.head-btn{font-size:11px;padding:4px 8px;min-height:32px}
-  .search-wrap input{width:100px;font-size:11px}
-  .search-wrap input:focus{width:130px}
-  .search-overlay{right:8px;width:calc(100vw - 16px)}
-  .card{padding:8px}
-  .modal{padding:16px;margin:8px}
-  .label-picker{width:200px}
+.loading::after{content:'...';animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:'.'}25%{content:'..'}50%{content:'...'}75%{content:''}}
+
+/* Empty */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-state p{font-size:13px;margin:0 0 12px}
+.empty-state button{padding:8px 20px;border-radius:var(--radius);border:none;background:var(--accent);color:#fff;font-size:13px;cursor:pointer}
+
+/* Desktop <768px: bottom nav stays bottom. Desktop >768px: sidebar */
+@media(min-width:768px){
+  body{flex-direction:row-reverse}
+  nav{flex-direction:column;width:80px;border-top:none;border-left:1px solid var(--border)}
+  .nav-item{padding:16px 0}
+  header .head-inner{padding:0 8px}
 }
 </style>
 </head>
 <body>
+
 <header>
   <div class="head-inner">
-    <span class="logo">Board</span>
-    <div id="boardTabs"></div>
-    <button class="head-btn" onclick="showModal('newBoard')">+ Board</button>
-    <div class="search-wrap">
-      <span class="ico">⌕</span>
-      <input id="searchInput" placeholder="Search..." oninput="onSearch(this.value)"/>
-    </div>
-    <button class="head-btn" onclick="reloadAll()" title="Refresh">↻</button>
+    <span class="logo">Kanban</span>
+    <div class="search-box"><input id="searchInput" placeholder="Search..." oninput="onSearch(this.value)"/></div>
+    <button class="head-btn" onclick="reloadAll()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:6px">↻</button>
   </div>
 </header>
-<div class="search-overlay" id="searchOverlay"></div>
-<main class="board-wrap" id="boardWrap"></main>
-<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal" id="modalBody" onclick="event.stopPropagation()"></div>
-</div>
+
+<main id="mainContent">
+  <div class="tab-page active" id="pageDashboard"><div id="dashContent" class="loading">Loading</div></div>
+  <div class="tab-page" id="pageKanban"><div id="kanbanContent"></div></div>
+  <div class="tab-page" id="pageGantt"><div id="ganttContent" class="loading">Loading</div></div>
+</main>
+
+<nav id="bottomNav">
+  <button class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')"><span class="nav-icon">📊</span>Dashboard</button>
+  <button class="nav-item" data-tab="kanban" onclick="switchTab('kanban')"><span class="nav-icon">📋</span>Kanban</button>
+  <button class="nav-item" data-tab="gantt" onclick="switchTab('gantt')"><span class="nav-icon">📈</span>Gantt</button>
+</nav>
+
+<div class="modal-overlay" id="modalOverlay" onclick="modalClose(event)"><div class="modal" id="modalBody" onclick="event.stopPropagation()"></div></div>
 <div class="toast" id="toast"></div>
-<div class="label-picker" id="labelPicker" onclick="event.stopPropagation()"></div>
+
 <script>
-// ═══ STATE ═══
-let S={boards:[],activeBoardId:null,drag:null,cols:[],showArchived:{},searchTimer:null}
-const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))
-const toast=(msg,t)=>{const e=$('toast');e.textContent=msg;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',t||2500)}
+// ═══ HELPERS ═══
+const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))
+const toast=m=>{const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2500)}
 const today=()=>new Date().toISOString().slice(0,10)
-const LABEL_COLORS=['#f0414a','#f5a623','#34d399','#4f7dff','#a78bfa','#ec4899','#14b8a6','#f97316']
-const ASSIGNEE_COLORS=['#4f7dff','#a78bfa','#f5a623','#34d399','#f0414a','#ec4899','#14b8a6','#f97316']
+async function api(url,o={}){const r=await fetch(url,{headers:{'Content-Type':'application/json'},...o});if(!r.ok){try{const e=await r.json();throw new Error(e.detail||r.statusText)}catch(e){throw e}}return r.status===204?null:r.json()}
 
-async function api(url,opts={}){
-  const res=await fetch(url,{headers:{'Content-Type':'application/json'},...opts})
-  if(!res.ok){let m;try{m=(await res.json()).detail||res.statusText}catch{m=res.statusText};throw new Error(m)}
-  return res.status===204?null:res.json()
+// ═══ TAB SWITCH ═══
+let currentTab='dashboard'
+function switchTab(tab){
+  currentTab=tab
+  document.querySelectorAll('.tab-page').forEach(p=>p.classList.toggle('active',p.id==='page'+tab.charAt(0).toUpperCase()+tab.slice(1)))
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.tab===tab))
+  if(tab==='dashboard') renderDashboard()
+  if(tab==='kanban') renderKanban()
+  if(tab==='gantt') renderGantt()
 }
 
-// ═══ DATA ═══
-async function loadBoards(){S.boards=await api('/api/boards');if(!S.activeBoardId&&S.boards.length)S.activeBoardId=S.boards[0].id}
-async function loadBoard(id){S.cols=await api(`/api/boards/${id}/columns`);return S.cols}
-
-// ═══ RENDER ═══
-function renderTabs(){
-  $('boardTabs').innerHTML=S.boards.map(b=>`<button class="board-tab${b.id===S.activeBoardId?' active':''}" onclick="switchBoard(${b.id})" ondblclick="renameBoard(${b.id},'${esc(b.title)}')">${esc(b.title)}<span class="close-tab" onclick="event.stopPropagation();delBoard(${b.id})">×</span></button>`).join('')
-  if(!S.activeBoardId&&!S.boards.length)$('boardTabs').innerHTML=''
+// ═══ DASHBOARD ═══
+let dashData=null
+async function renderDashboard(){
+  $('dashContent').innerHTML='<div class="loading">Loading</div>'
+  try{
+    dashData=await api('/api/dashboard')
+    let h=`<div class="stats-grid">
+      <div class="stat-card"><div class="stat-num">${dashData.total_cards}</div><div class="stat-label">Total Cards</div></div>
+      <div class="stat-card overdue"><div class="stat-num">${dashData.overdue}</div><div class="stat-label">Overdue</div></div>
+      <div class="stat-card soon"><div class="stat-num">${dashData.due_today}</div><div class="stat-label">Due Today</div></div>
+      <div class="stat-card ok"><div class="stat-num">${dashData.due_soon}</div><div class="stat-label">Due This Week</div></div>
+    </div>`
+    h+=`<div class="section-title">📋 Boards (${dashData.board_count})</div>`
+    h+=dashData.boards.map(b=>`<div class="list-item"><span>${esc(b.title)}</span><span class="badge">${b.card_count}</span></div>`).join('')
+    h+=`<div class="section-title">📦 Columns (${dashData.column_count})</div>`
+    h+=dashData.columns.map(c=>`<div class="list-item"><span>${esc(c.title)}</span><span class="badge">${c.card_count}</span></div>`).join('')
+    $('dashContent').innerHTML=h
+  }catch(e){$('dashContent').innerHTML=`<div class="empty-state"><p>⚠ ${esc(e.message)}</p><button onclick="renderDashboard()">Retry</button></div>`}
 }
 
-function switchBoard(id){S.activeBoardId=id;S.showArchived={};renderTabs();renderBoard()}
+// ═══ KANBAN ═══
+let boards=[], activeBoardId=null, allColumns=[], dragData=null
+async function loadBoards(){boards=await api('/api/boards');if(!activeBoardId&&boards.length)activeBoardId=boards[0].id}
+async function loadBoard(id){allColumns=await api(`/api/boards/${id}/columns`);return allColumns}
 
-function renderBoard(){
-  const w=$('boardWrap')
-  if(!S.activeBoardId){w.innerHTML=`<div class="empty-state"><p>No boards yet</p><button class="head-btn prim" onclick="showModal('newBoard')">Create your first board</button></div>`;return}
-  w.innerHTML='<div class="loading">Loading</div>'
-  loadBoard(S.activeBoardId).then(cols=>{
-    w.innerHTML=cols.map(c=>renderColumn(c)).join('')
-    if(!cols.length)w.innerHTML=`<div class="empty-state"><p>No columns yet</p><button class="head-btn prim" onclick="showModal('addCol')">Add your first column</button></div>`
-  }).catch(e=>{w.innerHTML=`<div class="empty-state"><p>⚠ ${esc(e.message)}</p><button class="head-btn" onclick="renderBoard()">Retry</button></div>`})
-}
-
-function renderColumn(col){
-  const archived=col.cards?.filter(c=>c.archived)||[], active=col.cards?.filter(c=>!c.archived)||[]
-  const showArch=S.showArchived[col.id]
-  const cards=(showArch?col.cards||[]:active).map(c=>renderCard(c)).join('')
-  const archBtn=archived.length?`<span class="col-archived-count" onclick="toggleArchived(${col.id})">📦${archived.length}</span>`:''
-  return `<section class="col${showArch?' archived-mode':''}" data-col="${col.id}" ondragover="onDragOver(event,${col.id})" ondrop="onDrop(event,${col.id})" ondragleave="onDragLeave(event,${col.id})">
-    <div class="col-head"><h3 ondblclick="renameColumn(${col.id})" id="colTitle-${col.id}">${esc(col.title)}</h3><span class="col-count">${active.length}</span>${archBtn}<button class="${showArch?'col-archived-toggle':'col-archived-toggle'}" onclick="toggleArchived(${col.id})" title="Toggle archived">${showArch?'⊝':'⊡'}</button><button class="col-del" onclick="delColumn(${col.id})" title="Delete column">×</button></div>
-    <div class="col-cards" id="cards-${col.id}">${cards||`<div class="empty-state" style="padding:20px"><p>No cards in this column</p></div>`}</div>
-    <div class="new-card-form" id="cardForm-${col.id}"><input id="cardInput-${col.id}" placeholder="Card title" maxlength="200"/><textarea id="cardDesc-${col.id}" placeholder="Description (optional)" rows="2"></textarea><div class="form-actions"><button class="save" onclick="addCard(${col.id})">Add</button><button class="cancel" onclick="toggleCardForm(${col.id})">Cancel</button></div></div>
-    <button class="col-add-btn" id="addBtn-${col.id}" onclick="toggleCardForm(${col.id})">+ Add card</button>
-  </section>`
+async function renderKanban(){
+  try{
+    await loadBoards()
+    if(!boards.length){$('kanbanContent').innerHTML=`<div class="empty-state"><p>No boards yet</p><button onclick="showModal('newBoard')">Create Board</button></div>`;return}
+    let h=`<div class="board-tabs">${boards.map(b=>`<div class="board-tab${b.id===activeBoardId?' active':''}" onclick="switchBoard(${b.id})">${esc(b.title)}<span class="close-tab" onclick="event.stopPropagation();delBoard(${b.id})">×</span></div>`).join('')}
+      <button class="board-tab" onclick="showModal('newBoard')" style="border-style:dashed;opacity:.7">+</button></div>`
+    await loadBoard(activeBoardId)
+    h+=`<div class="board-wrap">${allColumns.map(col=>{
+      let cards=(col.cards||[]).filter(c=>!c.archived).map(c=>renderCard(c)).join('')
+      return `<div class="col" data-col="${col.id}" ondragover="e=>e.preventDefault();e.target.closest('.card')?.classList.add('drag-over')" ondrop="dropCard(event,${col.id})"><div class="col-head"><h3 contenteditable="false" onfocus="e=>{e.target.contentEditable=true}" onblur="renameCol(${col.id},this)">${esc(col.title)}</h3><span class="col-count">${(col.cards||[]).filter(c=>!c.archived).length}</span><button class="col-del" onclick="delCol(${col.id})">×</button></div><div class="col-cards" id="cards-${col.id}">${cards}</div>
+      <div class="new-card-form" id="cardForm-${col.id}"><input id="cardInput-${col.id}" placeholder="Card title" maxlength="200"/><textarea id="cardDesc-${col.id}" placeholder="Description" rows="2"></textarea><div class="form-actions"><button class="save" onclick="addCard(${col.id})">Add</button><button class="cancel" onclick="toggleForm(${col.id})">Cancel</button></div></div>
+      <button class="col-add-btn" id="addBtn-${col.id}" onclick="toggleForm(${col.id})">+ Add card</button></div>`
+    }).join('')}
+    <button style="min-width:60px;flex-shrink:0;border:1px dashed var(--border);border-radius:var(--radius2);background:transparent;color:var(--text3);font-size:28px;cursor:pointer;height:80px;align-self:flex-start;margin-top:0" onclick="showModal('addCol')">+</button></div>`
+    $('kanbanContent').innerHTML=h
+    // Attach drag events
+    document.querySelectorAll('.card').forEach(el=>{
+      el.draggable=true
+      el.ondragstart=e=>{dragData={id:+el.dataset.id,fromCol:+el.dataset.col};el.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
+      el.ondragend=e=>{el.classList.remove('dragging');document.querySelectorAll('.drag-over').forEach(c=>c.classList.remove('drag-over'));dragData=null}
+      el.ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='move'}
+    })
+    // Column drop zone
+    document.querySelectorAll('.col').forEach(col=>{
+      col.ondragover=e=>{e.preventDefault()}
+      col.ondrop=e=>dropCard(e,+col.dataset.col)
+    })
+  }catch(e){$('kanbanContent').innerHTML=`<div class="empty-state"><p>⚠ ${esc(e.message)}</p><button onclick="renderKanban()">Retry</button></div>`}
 }
 
 function renderCard(c){
-  const due=c.due_date?c.due_date.slice(0,10):null,over=due&&due<today()
-  const labels=(c.labels||[]).map(l=>`<span class="card-label" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44" onclick="event.stopPropagation();showLabelPicker(event,${c.id})">${esc(l.name)}</span>`).join('')
-  const assignees=(c.assignees||[]).map((a,i)=>`<span class="card-assignee" style="background:${ASSIGNEE_COLORS[i%ASSIGNEE_COLORS.length]}" onclick="event.stopPropagation();delAssignee(${c.id},${a.id})" title="${esc(a.assignee)}">${a.assignee[0].toUpperCase()}</span>`).join('')
-  return `<div class="card${c.archived?' archived':''}" draggable="true" data-id="${c.id}" data-col="${c.column_id}" ondragstart="onDragStart(event,${c.id},${c.column_id})" ondragend="onDragEnd(event)">
-    <div class="card-labels">${labels}<span class="card-label" style="background:transparent;color:var(--text3);border:1px dashed var(--border);font-size:10px" onclick="event.stopPropagation();showLabelPicker(event,${c.id})">+label</span></div>
-    ${assignees?`<div class="card-assignees">${assignees}<span class="add-assignee-btn" onclick="event.stopPropagation();addAssignee(${c.id})">+</span></div>`:''}
+  const od=c.due_date&&c.due_date.slice(0,10)<today()
+  return `<div class="card" data-id="${c.id}" data-col="${c.column_id}" data-pos="${c.position}">
     <div class="card-title">${esc(c.title)}</div>
     ${c.description?`<div class="card-desc">${esc(c.description)}</div>`:''}
-    <div class="card-meta">${due?`<span class="${over?'overdue':'due'}">● ${due}</span>`:''}</div>
+    <div class="card-meta">
+      ${(c.labels||[]).map(l=>`<span class="label-pill" style="background:${l.color}">${esc(l.name)}</span>`).join('')}
+      ${(c.assignees||[]).map(a=>`<span class="assignee-pill" title="${esc(a.assignee)}">${a.assignee.charAt(0).toUpperCase()}</span>`).join('')}
+      ${c.due_date?`<span class="${od?'overdue':'due'}">● ${c.due_date.slice(0,10)}</span>`:''}
+    </div>
     <div class="card-actions">
-      <button class="edit-btn" onclick="event.stopPropagation();showModal('editCard',{id:${c.id}})" title="Edit">✎</button>
-      <button class="arch" onclick="event.stopPropagation();archCard(${c.id},${!c.archived})" title="${c.archived?'Unarchive':'Archive'}">${c.archived?'◐':'📦'}</button>
-      <button class="del" onclick="event.stopPropagation();delCard(${c.id})" title="Delete">✕</button>
+      <button onclick="event.stopPropagation();showModal('editCard',{id:${c.id},colId:${c.column_id}})">✎</button>
+      <button onclick="event.stopPropagation();showModal('archiveCard',{id:${c.id}})">📦</button>
+      <button onclick="event.stopPropagation();delCard(${c.id})">✕</button>
     </div>
   </div>`
 }
 
-// ═══ MODALS ═══
+function switchBoard(id){activeBoardId=id;renderKanban()}
+function toggleForm(colId){const f=$('cardForm-'+colId),b=$('addBtn-'+colId);f.classList.toggle('open');b.style.display=f.classList.contains('open')?'none':''}
+async function addCard(cid){const t=$('cardInput-'+cid).value.trim();if(!t)return;await api('/api/cards',{method:'POST',body:JSON.stringify({column_id:cid,title:t,description:$('cardDesc-'+cid).value.trim()})});$('cardInput-'+cid).value='';$('cardDesc-'+cid).value='';toggleForm(cid);renderKanban();toast('Card added')}
+async function delCard(id){if(!await confirmDlg('Delete this card?'))return;await api(`/api/cards/${id}`,{method:'DELETE'});renderKanban();toast('Card deleted')}
+async function delCol(id){if(!await confirmDlg('Delete this column and all cards?'))return;await api(`/api/columns/${id}`,{method:'DELETE'});renderKanban();toast('Column deleted')}
+async function delBoard(id){if(!await confirmDlg('Delete this board and all its cards?'))return;await api(`/api/boards/${id}`,{method:'DELETE'});boards=boards.filter(b=>b.id!==id);if(activeBoardId===id)activeBoardId=boards.length?boards[0].id:null;renderKanban()}
+async function renameCol(id,el){el.contentEditable=false;const t=el.textContent.trim();if(t)await api(`/api/columns/${id}`,{method:'PUT',body:JSON.stringify({title:t})})}
+async function dropCard(e,targetCol){e.preventDefault();document.querySelectorAll('.drag-over').forEach(c=>c.classList.remove('drag-over'));if(!dragData)return;const {id,fromCol}=dragData;const cardsEl=$('cards-'+targetCol);if(!cardsEl)return;const cards=cardsEl.querySelectorAll('.card');let pos=1;const dt=e.target.closest('.card');if(dt){const idx=Array.from(cards).indexOf(dt);pos=idx>=0?idx+1:cards.length+1}else pos=cards.length+1;try{if(fromCol===targetCol){await api(`/api/cards/${id}/reorder`,{method:'PUT',body:JSON.stringify({position:pos})})}else{await api(`/api/cards/${id}/move`,{method:'PUT',body:JSON.stringify({column_id:targetCol,position:pos})})}renderKanban()}catch(e){toast('Move failed')}dragData=null}
+
+// ═══ GANTT ═══
+async function renderGantt(){
+  $('ganttContent').innerHTML='<div class="loading">Loading</div>'
+  try{
+    const data=await api('/api/gantt')
+    if(!data.length){$('ganttContent').innerHTML='<div class="gantt-empty">No cards with due dates. Add due dates to cards to see them here.</div>';return}
+    const colGroups={};data.forEach(c=>{if(!colGroups[c.column_name])colGroups[c.column_name]=[];colGroups[c.column_name].push(c)})
+    let h=''
+    Object.entries(colGroups).forEach(([name,cards])=>{
+      h+=`<div class="gantt-section"><div class="gantt-col-title">${esc(name)} (${cards.length})</div>`
+      cards.forEach(c=>{
+        if(!c.due_date){h+=`<div class="gantt-bar-wrap"><span class="gantt-label">${esc(c.title)} <span style="color:var(--text3)">(no date)</span></span></div>`;return}
+        const dd=c.due_date.split('T')[0]
+        const daysLeft=Math.max(0,Math.round((new Date(dd)-new Date(today()))/86400000))
+        const barColor=daysLeft<=0?'var(--red)':daysLeft<=3?'var(--orange)':'var(--accent)'
+        const pct=Math.min(100,daysLeft*5+10)+'%'
+        h+=`<div class="gantt-bar-wrap"><span class="gantt-label">${esc(c.title)}</span><div class="gantt-bar" style="width:${pct};background:${barColor};min-width:${daysLeft<=0?'80px':'40px'}"><span class="gantt-date">${dd}</span></div></div>`
+      })
+      h+='</div>'
+    })
+    $('ganttContent').innerHTML=h
+  }catch(e){$('ganttContent').innerHTML=`<div class="gantt-empty">⚠ ${esc(e.message)}</div>`}
+}
+
+// ═══ SEARCH ═══
+let searchTimer
+async function onSearch(q){
+  clearTimeout(searchTimer)
+  if(!q.trim()){document.querySelectorAll('.card').forEach(c=>c.style.display='');return}
+  searchTimer=setTimeout(async()=>{
+    try{
+      const res=await api(`/api/search?q=${encodeURIComponent(q)}`)
+      if(currentTab!=='kanban'){switchTab('kanban')}
+      // highlight matching cards
+      document.querySelectorAll('.card').forEach(c=>{const id=+c.dataset.id;c.style.display=res.some(r=>r.id===id)?'':'none'})
+      toast(`Found ${res.length} cards`)
+    }catch(e){}
+  },300)
+}
+
+// ═══ MODAL ═══
 function showModal(type,data){
-  const body=$('modalBody'),over=$('modalOverlay')
-  over.classList.add('open')
+  $('modalOverlay').classList.add('open')
+  const body=$('modalBody')
   if(type==='newBoard'){
-    body.innerHTML=`<h2>New Board</h2><label>Board name</label><input id="mI" placeholder="e.g. Sprint" maxlength="100" autofocus/><div class="modal-actions"><button class="sec" onclick="closeModal()">Cancel</button><button class="prim" id="mA">Create</button></div>`
-    const act=()=>{const v=$('mI').value.trim();if(!v)return;closeModal();createBoard(v)}
-    setTimeout(()=>{$('mI').focus();$('mI').select()},100);$('mA').onclick=act;$('mI').onkeydown=e=>e.key==='Enter'&&act()
+    body.innerHTML=`<h2>New Board</h2><input id="modalInput" placeholder="Board name" maxlength="100" autofocus/><div class="modal-actions"><button class="sec" onclick="modalClose()">Cancel</button><button class="prim" onclick="createBoard()">Create</button></div>`
+    setTimeout(()=>{$('modalInput').focus()},100)
   }else if(type==='addCol'){
-    body.innerHTML=`<h2>New Column</h2><label>Column name</label><input id="mI" placeholder="e.g. Review" maxlength="100" autofocus/><div class="modal-actions"><button class="sec" onclick="closeModal()">Cancel</button><button class="prim" id="mA">Add</button></div>`
-    const act=async()=>{const v=$('mI').value.trim();if(!v)return;closeModal();if(!S.activeBoardId)return toast('Create a board first');const cols=await loadBoard(S.activeBoardId);await api('/api/columns',{method:'POST',body:JSON.stringify({board_id:S.activeBoardId,title:v,position:(cols.length||0)+1})});await renderBoard();toast(`Column "${v}" added`)}
-    setTimeout(()=>{$('mI').focus();$('mI').select()},100);$('mA').onclick=act;$('mI').onkeydown=e=>e.key==='Enter'&&act()
+    body.innerHTML=`<h2>New Column</h2><input id="modalInput" placeholder="Column name" maxlength="100" autofocus/><div class="modal-actions"><button class="sec" onclick="modalClose()">Cancel</button><button class="prim" onclick="addColumn()">Add</button></div>`
+    setTimeout(()=>{$('modalInput').focus()},100)
   }else if(type==='editCard'){
-    const allCards=S.cols.flatMap(c=>c.cards||[]),card=allCards.find(c=>c.id===data.id)
-    if(!card){closeModal();return}
-    body.innerHTML=`<h2>Edit Card</h2><label>Title</label><input id="mI" value="${esc(card.title)}" maxlength="200" autofocus/><label>Description</label><textarea id="mD" rows="3">${esc(card.description||'')}</textarea><label>Due date</label><input id="mDue" type="date" value="${card.due_date?card.due_date.slice(0,10):''}"/><div class="modal-actions"><button class="danger" onclick="delCard(${data.id});closeModal()">Delete</button><button class="sec" onclick="closeModal()">Cancel</button><button class="prim" id="mA">Save</button></div>`
-    const act=async()=>{const t=$('mI').value.trim();if(!t)return;const p={title:t,description:$('mD').value.trim(),due_date:$('mDue').value||null};closeModal();await api(`/api/cards/${data.id}`,{method:'PUT',body:JSON.stringify(p)});await renderBoard();toast('Card updated')}
-    setTimeout(()=>{$('mI').focus();$('mI').select()},100);$('mA').onclick=act
-  }else if(type==='confirm'){
-    body.innerHTML=`<p class="confirm-text">${esc(data.msg)}</p><div class="modal-actions"><button class="sec" id="confirmNo">Cancel</button><button class="${data.danger?'danger':'ok'}" id="confirmYes">${data.yes||'Confirm'}</button></div>`
-    $('confirmYes').onclick=()=>{closeModal();data.resolve(true)}
-    $('confirmNo').onclick=()=>{closeModal();data.resolve(false)}
+    const col=allColumns.find(c=>c.id===data.colId),card=col?.cards?.find(c=>c.id===data.id)
+    if(!card)return
+    body.innerHTML=`<h2>Edit Card</h2><label>Title</label><input id="modalInput" value="${esc(card.title)}" maxlength="200"/><label>Description</label><textarea id="modalDesc" rows="3">${esc(card.description||'')}</textarea><label>Due date</label><input id="modalDue" type="date" value="${card.due_date?card.due_date.slice(0,10):''}"/>
+    ${(card.labels||[]).map(l=>`<span class="label-pill" style="background:${l.color};cursor:pointer;margin:2px;display:inline-block" onclick="removeLabel(${card.id},${l.id})">${esc(l.name)} ✕</span>`).join('')}
+    <div style="display:flex;gap:4px;margin:6px 0"><input id="labelInput" placeholder="Add label" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px"/><button onclick="addLabel(${card.id})" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px">+</button></div>
+    <div class="modal-actions"><button class="danger" onclick="delCard(${data.id});modalClose()">Delete</button><button class="sec" onclick="modalClose()">Cancel</button><button class="prim" onclick="saveCard(${card.id})">Save</button></div>`
+    setTimeout(()=>{$('modalInput').focus()},100)
+  }else if(type==='archiveCard'){
+    body.innerHTML=`<h2>Archive Card?</h2><p style="font-size:13px;color:var(--text2)">Move to archived?</p><div class="modal-actions"><button class="sec" onclick="modalClose()">Cancel</button><button class="prim" onclick="archiveCard(${data.id})">Archive</button></div>`
   }
 }
 
-function closeModal(){$('modalOverlay').classList.remove('open')}
-window.closeModal=()=>$('modalOverlay').classList.remove('open')
+async function createBoard(){const v=$('modalInput').value.trim();if(!v)return;modalClose();await api('/api/boards',{method:'POST',body:JSON.stringify({title:v})});renderKanban();toast('Board created')}
+async function addColumn(){const v=$('modalInput').value.trim();if(!v)return;modalClose();const cols=await loadBoard(activeBoardId);await api('/api/columns',{method:'POST',body:JSON.stringify({board_id:activeBoardId,title:v,position:(cols.length||0)+1})});renderKanban();toast('Column added')}
+async function saveCard(id){const t=$('modalInput').value.trim();if(!t)return;const b={title:t};const d=$('modalDesc').value.trim();if(d)b.description=d;const u=$('modalDue').value;if(u)b.due_date=u;modalClose();await api(`/api/cards/${id}`,{method:'PUT',body:JSON.stringify(b)});renderKanban();toast('Card saved')}
+async function archiveCard(id){modalClose();await api(`/api/cards/${id}/archive`,{method:'PUT',body:JSON.stringify({archived:true})});renderKanban();toast('Card archived')}
+async function addLabel(cardId){const v=$('labelInput').value.trim();if(!v)return;$('labelInput').value='';await api(`/api/cards/${cardId}/labels`,{method:'POST',body:JSON.stringify({name:v,color:'#3b82f6'})});toast('Label added');showModal('editCard',{id:cardId,colId:allColumns.find(c=>c.cards?.some(cc=>cc.id===cardId))?.id})}
+async function removeLabel(cardId,lid){await api(`/api/cards/${cardId}/labels/${lid}`,{method:'DELETE'});toast('Label removed');showModal('editCard',{id:cardId,colId:allColumns.find(c=>c.cards?.some(cc=>cc.id===cardId))?.id})}
 
-function showConfirm(msg,danger=true,yes='Confirm'){return new Promise(r=>showModal('confirm',{msg,danger,yes,resolve:r}))}
+function modalClose(e){if(e&&e.target!==$('modalOverlay'))return;$('modalOverlay').classList.remove('open')}
 
-// ═══ BOARD ═══
-async function createBoard(t){await api('/api/boards',{method:'POST',body:JSON.stringify({title:t})});await reloadAll();toast(`Board "${t}" created`)}
-async function renameBoard(id,old){const t=prompt('Rename board:',old);if(!t||!t.trim()||t===old)return;await api(`/api/boards/${id}`,{method:'PUT',body:JSON.stringify({title:t.trim()})});await reloadAll();toast('Board renamed')}
-async function delBoard(id){if(!await showConfirm('Delete this board and all its cards? This cannot be undone.'))return;await api(`/api/boards/${id}`,{method:'DELETE'});S.boards=S.boards.filter(b=>b.id!==id);if(S.activeBoardId===id)S.activeBoardId=S.boards.length?S.boards[0].id:null;await reloadAll();toast('Board deleted')}
-
-// ═══ COLUMN ═══
-async function renameColumn(id){
-  const h=$('colTitle-'+id);if(!h)return;const old=h.textContent
-  h.contentEditable='true';h.classList.add('editing')
-  const r=document.createRange();r.selectNodeContents(h);const s=window.getSelection();s.removeAllRanges();s.addRange(r)
-  const fin=async()=>{h.contentEditable='false';h.classList.remove('editing');const t=h.textContent.trim();if(t&&t!==old){await api(`/api/columns/${id}`,{method:'PUT',body:JSON.stringify({title:t})});toast('Column renamed')}else h.textContent=old;h.removeEventListener('blur',fin);h.removeEventListener('keydown',k)}
-  const k=e=>{if(e.key==='Enter'){e.preventDefault();h.blur()}}
-  h.addEventListener('blur',fin);h.addEventListener('keydown',k)
-}
-async function delColumn(id){if(!await showConfirm('Delete this column and all its cards?'))return;await api(`/api/columns/${id}`,{method:'DELETE'});await renderBoard();toast('Column deleted')}
-function toggleArchived(colId){S.showArchived[colId]=!S.showArchived[colId];renderBoard()}
-
-// ═══ CARD ═══
-function toggleCardForm(id){const f=$('cardForm-'+id),b=$('addBtn-'+id);const o=f.classList.toggle('open');b.style.display=o?'none':'';if(o)setTimeout(()=>$('cardInput-'+id).focus(),100)}
-async function addCard(colId){const t=$('cardInput-'+colId).value.trim();if(!t)return;const d=$('cardDesc-'+colId).value.trim();await api('/api/cards',{method:'POST',body:JSON.stringify({column_id:colId,title:t,description:d})});$('cardInput-'+colId).value='';$('cardDesc-'+colId).value='';toggleCardForm(colId);await renderBoard()}
-async function delCard(id){if(!await showConfirm('Delete this card?'))return;await api(`/api/cards/${id}`,{method:'DELETE'});await renderBoard();toast('Card deleted')}
-async function archCard(id,arch){await api(`/api/cards/${id}/archive`,{method:'PUT',body:JSON.stringify({archived:arch})});await renderBoard();toast(arch?'Card archived':'Card unarchived')}
-
-// ═══ LABELS ═══
-function showLabelPicker(e,cardId){
-  const picker=$('labelPicker'),card=S.cols.flatMap(c=>c.cards||[]).find(c=>c.id===cardId)
-  if(!card)return;const labs=card.labels||[]
-  picker.innerHTML=`<h4>Labels</h4>${labs.map(l=>`<div class="lp-item"><span class="lp-dot" style="background:${l.color}"></span>${esc(l.name)}<span class="lp-del" onclick="delLabel(${cardId},${l.id})">×</span></div>`).join('')||'<div style="font-size:11px;color:var(--text3);margin-bottom:6px">No labels</div>'}
-  <div class="lp-add"><input id="lpName" placeholder="Label name" maxlength="50"/><button onclick="addLabel(${cardId})">Add</button></div>
-  <div class="colors" id="lpColors">${LABEL_COLORS.map(c=>`<span style="background:${c}" data-color="${c}" onclick="document.querySelectorAll('#lpColors span').forEach(s=>s.classList.remove('sel'));this.classList.add('sel')"></span>`).join('')}</div>`
-  picker.style.display='block'
-  const rect=e.target.getBoundingClientRect(),vw=window.innerWidth
-  let left=rect.left,top=rect.bottom+4
-  if(left+240>vw)left=vw-250
-  if(top+300>window.innerHeight)top=rect.top-300
-  picker.style.left=left+'px';picker.style.top=top+'px'
-  document.addEventListener('click',hideLabelPicker,{once:true})
-}
-function hideLabelPicker(){$('labelPicker').style.display='none'}
-async function addLabel(cardId){const n=$('lpName').value.trim();if(!n)return;const sel=document.querySelector('#lpColors .sel'),c=sel?sel.dataset.color:LABEL_COLORS[3];await api(`/api/cards/${cardId}/labels`,{method:'POST',body:JSON.stringify({name:n,color:c})});$('labelPicker').style.display='none';await renderBoard();toast('Label added')}
-async function delLabel(cardId,labelId){await api(`/api/cards/${cardId}/labels/${labelId}`,{method:'DELETE'});$('labelPicker').style.display='none';await renderBoard();toast('Label removed')}
-
-// ═══ ASSIGNEES ═══
-async function addAssignee(cardId){
-  const name=prompt('Assignee name:');if(!name||!name.trim())return
-  await api(`/api/cards/${cardId}/assignees`,{method:'POST',body:JSON.stringify({assignee:name.trim()})})
-  await renderBoard();toast('Assignee added')
-}
-async function delAssignee(cardId,assigneeId){await api(`/api/cards/${cardId}/assignees/${assigneeId}`,{method:'DELETE'});await renderBoard();toast('Assignee removed')}
-
-// ═══ SEARCH ═══
-async function onSearch(q){
-  clearTimeout(S.searchTimer);const over=$('searchOverlay')
-  if(!q.trim()){over.classList.remove('open');return}
-  S.searchTimer=setTimeout(async()=>{
-    try{
-      const res=await api(`/api/search?q=${encodeURIComponent(q.trim())}`)
-      const cards=res||[]
-      over.innerHTML=cards.length?cards.map(c=>`<div class="search-result" onclick="closeSearch();switchBoardFromSearch(${c.column_id})"><div class="sr-title">${esc(c.title)}</div><div class="sr-meta">#${c.id}${c.board_title?` · ${esc(c.board_title)}`:''}</div></div>`).join(''):'<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px">No results</div>'
-      over.classList.add('open')
-    }catch(e){over.innerHTML=`<div style="padding:12px;text-align:center;color:var(--red);font-size:12px">${esc(e.message)}</div>`;over.classList.add('open')}
-  },250)
-}
-function closeSearch(){$('searchInput').value='';$('searchOverlay').classList.remove('open')}
-function switchBoardFromSearch(colId){
-  const col=S.cols.find(c=>c.id===colId)
-  if(col&&col.board_id)S.activeBoardId=col.board_id
-  closeSearch();renderTabs();renderBoard()
-}
-
-// ═══ DRAG & DROP ═══
-function onDragStart(e,id,fromCol){S.drag={id,fromCol};e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';const g=e.currentTarget.cloneNode(true);g.style.position='absolute';g.style.top='-9999px';g.style.pointerEvents='none';document.body.appendChild(g);e.dataTransfer.setDragImage(g,0,0);setTimeout(()=>document.body.removeChild(g))}
-function onDragEnd(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));S.drag=null}
-function onDragOver(e,colId){e.preventDefault();e.dataTransfer.dropEffect='move';const card=e.target.closest('.card');if(card&&S.drag)card.classList.add('drag-over')}
-function onDragLeave(e,colId){const card=e.target.closest('.card');if(card)card.classList.remove('drag-over')}
-async function onDrop(e,targetCol){
-  e.preventDefault()
-  document.querySelectorAll('.drag-over').forEach(c=>c.classList.remove('drag-over'))
-  if(!S.drag)return
-  const{id,fromCol}=S.drag,el=$('cards-'+targetCol)
-  if(!el){S.drag=null;return}
-  const cards=el.querySelectorAll('.card:not(.dragging)'),dt=e.target.closest('.card')
-  let pos=1
-  if(dt){const idx=Array.from(cards).indexOf(dt);pos=idx>=0?idx+1:cards.length+1}else pos=cards.length+1
-  try{
-    if(fromCol===targetCol)await api(`/api/cards/${id}/reorder`,{method:'PUT',body:JSON.stringify({position:pos})})
-    else await api(`/api/cards/${id}/move`,{method:'PUT',body:JSON.stringify({column_id:targetCol,position:pos})})
-    await renderBoard()
-  }catch(e){toast('Move failed: '+e.message)}
-  S.drag=null
+// ═══ CONFIRM ═══
+function confirmDlg(msg){
+  return new Promise(res=>{
+    $('modalOverlay').classList.add('open')
+    $('modalBody').innerHTML=`<h2>Confirm</h2><p style="font-size:13px;color:var(--text2)">${esc(msg)}</p><div class="modal-actions"><button class="sec" onclick="res(false);modalClose()">Cancel</button><button class="danger" onclick="res(true);modalClose()">Yes</button></div>`
+  })
 }
 
 // ═══ INIT ═══
-async function reloadAll(){
-  try{await loadBoards();renderTabs();renderBoard()}catch(e){$('boardWrap').innerHTML=`<div class="empty-state"><p>⚠ ${esc(e.message)}</p><button class="head-btn" onclick="reloadAll()">Retry</button></div>`}
-}
-reloadAll()
+async function reloadAll(){renderDashboard();if(currentTab==='kanban')renderKanban()}
+// Register SW
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{})
+// Start
+renderDashboard()
 </script>
 </body>
 </html>

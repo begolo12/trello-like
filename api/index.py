@@ -8,6 +8,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from mangum import Mangum
 from pydantic import BaseModel
 
@@ -697,6 +698,92 @@ async def serve_index():
         with open(html_path, encoding="utf-8") as f:
             return HTMLResponse(f.read())
     return {"status": "no frontend", "message": "API is running. Configure DATABASE_URL for full functionality."}
+
+
+# ── PWA serving ───────────────────────────────────────────────────
+
+@app.get("/manifest.json")
+async def serve_manifest():
+    mf_path = os.path.join(os.path.dirname(__file__), "..", "manifest.json")
+    if os.path.exists(mf_path):
+        return FileResponse(mf_path, media_type="application/manifest+json")
+    raise HTTPException(404)
+
+@app.get("/sw.js")
+async def serve_sw():
+    sw_path = os.path.join(os.path.dirname(__file__), "..", "sw.js")
+    if os.path.exists(sw_path):
+        return FileResponse(sw_path, media_type="application/javascript")
+    raise HTTPException(404)
+
+@app.get("/icon-{size}x{size}.png")
+async def serve_icon(size: int):
+    icon_path = os.path.join(os.path.dirname(__file__), "..", f"icon-{size}x{size}.png")
+    if os.path.exists(icon_path):
+        return FileResponse(icon_path, media_type="image/png")
+    raise HTTPException(404)
+
+
+# ── Gantt endpoint ────────────────────────────────────────────────
+
+@app.get("/api/gantt")
+async def gantt_data():
+    """Return cards with due dates, grouped by column, for Gantt chart."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT c.id, c.title, c.due_date, c.position, c.archived,
+                   col.id as column_id, col.title as column_name, col.board_id
+            FROM cards c
+            JOIN columns col ON col.id = c.column_id
+            WHERE c.archived = FALSE
+            ORDER BY c.due_date NULLS LAST, c.position
+        """)
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["due_date"] = str(d["due_date"]) if d["due_date"] else None
+            result.append(d)
+        return result
+
+
+# ── Dashboard endpoint ────────────────────────────────────────────
+
+@app.get("/api/dashboard")
+async def dashboard_stats():
+    """Return stats for dashboard view."""
+    async with pool.acquire() as conn:
+        total = await conn.fetchval("SELECT count(*) FROM cards WHERE archived = FALSE")
+        overdue = await conn.fetchval("SELECT count(*) FROM cards WHERE archived = FALSE AND due_date < CURRENT_DATE")
+        due_today = await conn.fetchval("SELECT count(*) FROM cards WHERE archived = FALSE AND due_date = CURRENT_DATE")
+        due_soon = await conn.fetchval("SELECT count(*) FROM cards WHERE archived = FALSE AND due_date >= CURRENT_DATE AND due_date < CURRENT_DATE + INTERVAL '7 days'")
+        board_count = await conn.fetchval("SELECT count(*) FROM boards")
+        col_count = await conn.fetchval("SELECT count(*) FROM columns")
+        cols = await conn.fetch("""
+            SELECT col.id, col.title, count(c.id) as card_count
+            FROM columns col
+            LEFT JOIN cards c ON c.column_id = col.id AND c.archived = FALSE
+            GROUP BY col.id, col.title
+            ORDER BY col.position
+        """)
+        # Cards per board
+        boards = await conn.fetch("""
+            SELECT b.id, b.title, count(c.id) as card_count
+            FROM boards b
+            JOIN columns col ON col.board_id = b.id
+            LEFT JOIN cards c ON c.column_id = col.id AND c.archived = FALSE
+            GROUP BY b.id, b.title
+            ORDER BY b.id
+        """)
+        return {
+            "total_cards": total or 0,
+            "overdue": overdue or 0,
+            "due_today": due_today or 0,
+            "due_soon": due_soon or 0,
+            "board_count": board_count or 0,
+            "column_count": col_count or 0,
+            "columns": [dict(r) for r in cols],
+            "boards": [dict(r) for r in boards],
+        }
 
 
 # ── Vercel handler ────────────────────────────────────────────────
