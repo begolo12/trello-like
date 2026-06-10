@@ -18,6 +18,11 @@ DB_DSN = (
     or "postgresql://postgres:***@localhost:5432/trello_like"
 )
 
+# asyncpg doesn't support sslmode/sslmode query params; strip them
+import re
+DB_DSN_CLEAN = re.sub(r"(\?.*)", "", DB_DSN)
+
+
 pool: asyncpg.Pool = None
 db_ready: bool = False
 
@@ -58,7 +63,7 @@ class CardMove(BaseModel):
 async def get_pool() -> asyncpg.Pool:
     global pool
     if pool is None:
-        pool = await asyncpg.create_pool(DB_DSN, min_size=1, max_size=3)
+        pool = await asyncpg.create_pool(DB_DSN_CLEAN, min_size=1, max_size=3)
     return pool
 
 
@@ -66,12 +71,11 @@ async def get_pool() -> asyncpg.Pool:
 async def lifespan(app: FastAPI):
     global pool, db_ready
     try:
-        pool = await asyncpg.create_pool(DB_DSN, min_size=1, max_size=3)
-        if pool:
-            async with pool.acquire() as conn:
-                await conn.fetchval("SELECT 1")
-            await seed_default()
-            db_ready = True
+        pool = await asyncpg.create_pool(DB_DSN_CLEAN, min_size=1, max_size=3)
+        async with pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+        await seed_default()
+        db_ready = True
     except Exception as e:
         print(f"[DB] Cannot connect: {e}")
         print(f"[DB] DSN prefix match: {DB_DSN[:25]}...")
