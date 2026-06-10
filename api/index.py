@@ -347,6 +347,18 @@ async def health():
     return {"status": "ok", "db": db_ready, "db_dsn": DB_DSN[:30] + "..." if db_ready else "not set"}
 
 
+# ── Serve frontend ────────────────────────────────────────────────
+
+@app.get("/")
+async def serve_index():
+    html_path = os.path.join(os.path.dirname(__file__), "..", "index.html")
+    if os.path.exists(html_path):
+        from fastapi.responses import HTMLResponse
+        with open(html_path, encoding="utf-8") as f:
+            return HTMLResponse(f.read())
+    return {"status": "no frontend", "message": "API is running. Configure DATABASE_URL for full functionality."}
+
+
 # ── Vercel handler ────────────────────────────────────────────────
 
 handler = Mangum(app)
