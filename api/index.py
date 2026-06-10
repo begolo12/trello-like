@@ -716,10 +716,10 @@ async def serve_sw():
         return FileResponse(sw_path, media_type="application/javascript")
     raise HTTPException(404)
 
-@app.get("/icon-{size}x{size}.png")
-async def serve_icon(size: int):
-    icon_path = os.path.join(os.path.dirname(__file__), "..", f"icon-{size}x{size}.png")
-    if os.path.exists(icon_path):
+@app.get("/icon-{w}x{h}.png")
+async def serve_icon(w: int, h: int):
+    icon_path = os.path.join(os.path.dirname(__file__), "..", f"icon-{w}x{w}.png")
+    if w == h and os.path.exists(icon_path):
         return FileResponse(icon_path, media_type="image/png")
     raise HTTPException(404)
 
