@@ -358,6 +358,19 @@ async def health():
     return {"status": "ok", "db": db_ready, "db_source": masked[:40] + "...", "env_var": used_var}
 
 
+@app.get("/api/db-test")
+async def db_test():
+    """Try to connect and return detailed error."""
+    import traceback
+    try:
+        c = await asyncpg.connect(DB_DSN_CLEAN, ssl="require")
+        v = await c.fetchval("SELECT 1")
+        await c.close()
+        return {"ok": True, "result": v}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "trace": traceback.format_exc()[:500]}
+
+
 # ── Serve frontend ────────────────────────────────────────────────
 
 @app.get("/")
