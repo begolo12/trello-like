@@ -17,9 +17,11 @@
     .head-inner{display:flex;align-items:center;gap:12px;height:52px;max-width:100%;overflow-x:auto;overflow-y:hidden}
     .head-inner::-webkit-scrollbar{height:0}
     .logo{font-weight:700;font-size:16px;white-space:nowrap;flex-shrink:0;background:linear-gradient(135deg,#4f7dff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-    .board-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;white-space:nowrap;transition:.15s;flex-shrink:0}
+    .board-tab{position:relative;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;white-space:nowrap;transition:.15s;flex-shrink:0;max-width:180px;overflow:hidden;text-overflow:ellipsis}
     .board-tab.active{background:var(--accent-bg);border-color:var(--accent);color:var(--accent2)}
     .board-tab:hover{background:var(--surface2)}
+    .board-tab .close-tab{display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;line-height:16px;text-align:center;border:2px solid var(--bg)}
+    .board-tab:hover .close-tab,.board-tab.active .close-tab{display:block}
     .head-btn{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s}
     .head-btn:hover{background:var(--surface2);color:var(--text)}
     .head-btn.prim{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -29,38 +31,40 @@
     .board-wrap{display:flex;gap:16px;padding:20px;align-items:flex-start;overflow-x:auto;min-height:calc(100vh - 52px);-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
     .board-wrap::-webkit-scrollbar{height:6px}
     .board-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-    .board-wrap.dragging *{pointer-events:none}
+    .board-wrap.dragging .card{cursor:grabbing}
     
     /* Column */
     .col{width:300px;min-width:270px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);display:flex;flex-direction:column;max-height:calc(100vh - 80px)}
     .col-head{padding:12px 14px 8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
-    .col-head h3{margin:0;font-size:14px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .col-head h3{margin:0;font-size:14px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:2px 4px;border-radius:4px;transition:.1s}
+    .col-head h3:hover{background:rgba(255,255,255,.04)}
+    .col-head h3.editing{background:rgba(0,0,0,.2);outline:1px solid var(--accent);white-space:normal;word-break:break-word;cursor:text}
     .col-count{font-size:12px;color:var(--text3);background:var(--surface2);padding:2px 8px;border-radius:10px;flex-shrink:0}
     .col-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:6px;transition:.15s;font-size:16px;line-height:1}
     .col-del:hover{color:var(--red);background:rgba(240,65,74,.1)}
-    .col-cards{flex:1;overflow-y:auto;padding:8px 8px 4px;display:flex;flex-direction:column;gap:6px}
+    .col-cards{flex:1;overflow-y:auto;padding:8px 8px 4px;display:flex;flex-direction:column;gap:6px;min-height:40px}
     .col-cards::-webkit-scrollbar{width:4px}
     .col-cards::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
     .col-add-btn{margin:8px;padding:8px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;font-size:13px;transition:.15s;text-align:center}
     .col-add-btn:hover{background:var(--surface2);color:var(--text2);border-color:var(--border2)}
     
     /* Card */
-    .card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;cursor:grab;transition:.15s,opacity .2s;position:relative}
+    .card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;cursor:grab;transition:border-color .15s,opacity .2s;position:relative}
     .card:hover{border-color:var(--border2);background:#1e2840}
-    .card.dragging{opacity:.4;transform:scale(.97)}
-    .card.drag-over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+    .card.dragging{opacity:.35;transform:scale(.96)}
+    .card.drag-over{border-color:var(--accent)!important;box-shadow:0 0 0 2px var(--accent-bg)!important}
     .card-title{font-size:14px;font-weight:500;margin-bottom:6px;word-break:break-word}
-    .card-title[contenteditable]{outline:none;cursor:text}
-    .card-title[contenteditable]:focus{background:rgba(0,0,0,.2);border-radius:4px;padding:2px 4px;margin:-2px -4px}
     .card-desc{font-size:12px;color:var(--text2);margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text3)}
     .card-meta .due{color:var(--orange)}
-    .card-meta .done{color:var(--green)}
+    .card-meta .overdue{color:var(--red);font-weight:600}
     .card-actions{display:none;position:absolute;top:8px;right:8px;gap:4px}
     .card:hover .card-actions{display:flex}
-    .card-actions button{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;padding:2px 6px;font-size:12px;transition:.15s}
+    @media(max-width:640px){.card-actions{display:flex;position:static;margin-top:6px}}
+    .card-actions button{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;padding:3px 8px;font-size:11px;transition:.15s}
     .card-actions button:hover{background:var(--surface2);color:var(--text)}
     .card-actions .del:hover{background:rgba(240,65,74,.15);color:var(--red);border-color:var(--red)}
+    .card-actions .edit-btn:hover{background:var(--accent-bg);color:var(--accent2);border-color:var(--accent)}
     
     /* New Card Input */
     .new-card-form{padding:8px;display:none;flex-direction:column;gap:6px}
@@ -75,27 +79,34 @@
     .new-card-form .cancel{background:transparent;color:var(--text2);border:1px solid var(--border)}
     .new-card-form .cancel:hover{background:var(--surface2);color:var(--text)}
     
-    /* New Board modal */
+    /* Modal (shared) */
     .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px}
     .modal-overlay.open{display:flex}
-    .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:24px;width:100%;max-width:380px}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:24px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
     .modal h2{margin:0 0 16px;font-size:16px;font-weight:600}
-    .modal input{width:100%;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;outline:none;margin-bottom:12px}
-    .modal input:focus{border-color:var(--accent)}
+    .modal label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+    .modal input,.modal textarea{width:100%;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;outline:none;margin-bottom:12px;}
+    .modal input:focus,.modal textarea:focus{border-color:var(--accent)}
+    .modal textarea{resize:vertical;min-height:70px;font-size:13px}
     .modal-actions{display:flex;gap:8px;justify-content:flex-end}
     .modal-actions button{padding:8px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:.15s}
     .modal-actions .prim{background:var(--accent);color:#fff}
     .modal-actions .prim:hover{background:var(--accent2)}
     .modal-actions .sec{background:transparent;color:var(--text2);border:1px solid var(--border)}
     .modal-actions .sec:hover{background:var(--surface2);color:var(--text)}
+    .modal-actions .danger{background:var(--red);color:#fff}
+    .modal-actions .danger:hover{background:#e0353e}
     
     /* Toast */
-    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 20px;font-size:13px;color:var(--text2);z-index:300;display:none;white-space:nowrap;animation:toastIn .2s}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 20px;font-size:13px;color:var(--text2);z-index:300;display:none;white-space:nowrap;animation:toastIn .2s;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
     @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}}
 
     /* Empty state */
-    .empty-state{padding:40px;text-align:center;color:var(--text3);min-width:300px}
+    .empty-state{padding:40px;text-align:center;color:var(--text3);min-width:300px;width:100%}
     .empty-state p{font-size:14px;margin:0 0 16px}
+    
+    /* Confirm dialog custom */
+    .confirm-text{font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.5}
     
     /* Responsive */
     @media(max-width:640px){
@@ -104,7 +115,6 @@
       .head-inner{gap:8px}
       .board-tab,.head-btn{font-size:12px;padding:5px 10px}
       .card{padding:10px}
-      .card-actions{display:flex}
     }
   </style>
 </head>
@@ -114,37 +124,36 @@
   <div class="head-inner">
     <span class="logo">Board</span>
     <div id="boardTabs"></div>
-    <button class="head-btn" onclick="showNewBoard()">+ Board</button>
-    <button class="head-btn" onclick="addColumn()">+ Column</button>
+    <button class="head-btn" onclick="showModal('newBoard')">+ Board</button>
+    <button class="head-btn" onclick="showModal('addCol')">+ Column</button>
     <button class="head-btn" onclick="reloadAll()" title="Refresh">↻</button>
   </div>
 </header>
 
 <main class="board-wrap" id="boardWrap"></main>
 
-<!-- New Board Modal -->
-<div class="modal-overlay" id="boardModal">
-  <div class="modal">
-    <h2>New Board</h2>
-    <input id="newBoardTitle" placeholder="Board name" maxlength="100" autofocus/>
-    <div class="modal-actions">
-      <button class="sec" onclick="closeModal()">Cancel</button>
-      <button class="prim" onclick="createBoard()">Create</button>
-    </div>
-  </div>
+<!-- Modal container (reused) -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalBody" onclick="event.stopPropagation()"></div>
 </div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ── State ──
-let state = { boards: [], activeBoardId: null, dragData: null }
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let state = { boards: [], activeBoardId: null, dragData: null, allColumns: [] }
+let modalHandlers = {}
 
-// ── Helpers ──
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
 const $ = id => document.getElementById(id)
 const esc = s => String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))
-const toast = (msg) => { const t=$('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500) }
+const toast = (msg) => { const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none',2500) }
+const today = () => new Date().toISOString().slice(0,10)
 
 async function api(url,opts={}){
   const res = await fetch(url,{headers:{'Content-Type':'application/json'},...opts})
@@ -152,28 +161,41 @@ async function api(url,opts={}){
   return res.status===204?null:res.json()
 }
 
-// ── Data ──
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
 async function loadBoards(){
   state.boards = await api('/api/boards')
   if(!state.activeBoardId&&state.boards.length) state.activeBoardId=state.boards[0].id
 }
 
 async function loadBoard(id){
-  return api(`/api/boards/${id}/columns`)
+  state.allColumns = await api(`/api/boards/${id}/columns`)
+  return state.allColumns
 }
 
-// ── Render ──
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
 function renderTabs(){
-  const c=$('boardTabs')
-  c.innerHTML=state.boards.map(b=>
-    `<button class="board-tab${b.id===state.activeBoardId?' active':''}" onclick="switchBoard(${b.id})">${esc(b.title)}</button>`
+  $('boardTabs').innerHTML=state.boards.map(b=>
+    `<button class="board-tab${b.id===state.activeBoardId?' active':''}" ondblclick="renameBoard(${b.id},'${esc(b.title)}')">
+      ${esc(b.title)}
+      <span class="close-tab" onclick="event.stopPropagation();deleteBoard(${b.id})">×</span>
+    </button>`
   ).join('')
+}
+
+function switchBoard(id){
+  state.activeBoardId=id
+  renderTabs()
+  renderBoard()
 }
 
 function renderBoard(){
   const wrap=$('boardWrap')
   if(!state.activeBoardId){
-    wrap.innerHTML=`<div class="empty-state"><p>No boards yet</p><button class="head-btn prim" onclick="showNewBoard()">Create your first board</button></div>`
+    wrap.innerHTML=`<div class="empty-state"><p>No boards yet</p><button class="head-btn prim" onclick="showModal('newBoard')">Create your first board</button></div>`
     return
   }
   loadBoard(state.activeBoardId).then(cols=>{
@@ -185,15 +207,13 @@ function renderBoard(){
 
 function renderColumn(col){
   const cards=(col.cards||[]).map(c=>renderCard(c)).join('')
-  return `<section class="col" data-col="${col.id}" ondragover="onDragOver(event)" ondrop="onDrop(event,${col.id})" ondragleave="onDragLeave(event)">
+  return `<section class="col" data-col="${col.id}" ondragover="onDragOver(event,${col.id})" ondrop="onDrop(event,${col.id})" ondragleave="onDragLeave(event,${col.id})">
     <div class="col-head">
-      <h3>${esc(col.title)}</h3>
+      <h3 ondblclick="renameColumn(${col.id})" id="colTitle-${col.id}">${esc(col.title)}</h3>
       <span class="col-count">${(col.cards||[]).length}</span>
       <button class="col-del" onclick="deleteColumn(${col.id})" title="Delete column">×</button>
     </div>
-    <div class="col-cards" id="cards-${col.id}">
-      ${cards}
-    </div>
+    <div class="col-cards" id="cards-${col.id}">${cards}</div>
     <div class="new-card-form" id="cardForm-${col.id}">
       <input id="cardInput-${col.id}" placeholder="Card title" maxlength="200"/>
       <textarea id="cardDesc-${col.id}" placeholder="Description (optional)" rows="2"></textarea>
@@ -207,157 +227,281 @@ function renderColumn(col){
 }
 
 function renderCard(c){
-  return `<div class="card" draggable="true" data-id="${c.id}" data-col="${c.column_id}"
-    ondragstart="onDragStart(event,${c.id},${c.column_id})"
-    ondragend="onDragEnd(event)"
-    onclick="editCard(${c.id},${c.column_id})">
+  const isOverdue = c.due_date && c.due_date.slice(0,10) < today()
+  return `<div class="card" draggable="true" data-id="${c.id}" data-col="${c.column_id}" data-pos="${c.position}"
+    ondragstart="onDragStart(event,${c.id},${c.column_id})" ondragend="onDragEnd(event)">
     <div class="card-title">${esc(c.title)}</div>
     ${c.description?`<div class="card-desc">${esc(c.description)}</div>`:''}
     <div class="card-meta">
-      ${c.due_date?`<span class="due">● ${esc(c.due_date.slice(0,10))}</span>`:''}
+      ${c.due_date?`<span class="${isOverdue?'overdue':'due'}">● ${esc(c.due_date.slice(0,10))}</span>`:''}
       <span>#${c.id}</span>
     </div>
     <div class="card-actions">
-      <button onclick="event.stopPropagation();deleteCard(${c.id})" class="del">✕</button>
+      <button class="edit-btn" onclick="event.stopPropagation();showModal('editCard',{id:${c.id},colId:${c.column_id}})">✎</button>
+      <button class="del" onclick="event.stopPropagation();deleteCard(${c.id})">✕</button>
     </div>
   </div>`
 }
 
-// ── Board actions ──
-function switchBoard(id){
-  state.activeBoardId=id
-  renderTabs()
-  renderBoard()
+// ═══════════════════════════════════════
+// MODAL SYSTEM
+// ═══════════════════════════════════════
+function showModal(type, data){
+  const overlay=$('modalOverlay')
+  const body=$('modalBody')
+  overlay.classList.add('open')
+  
+  if(type==='newBoard'){
+    body.innerHTML=`
+      <h2>New Board</h2>
+      <label>Board name</label>
+      <input id="modalInput" placeholder="e.g. Sprint 3" maxlength="100" autofocus/>
+      <div class="modal-actions">
+        <button class="sec" onclick="closeModal()">Cancel</button>
+        <button class="prim" id="modalAction">Create</button>
+      </div>`
+    modalHandlers.action = ()=>{
+      const v=$('modalInput').value.trim()
+      if(!v)return
+      closeModal(); createBoard(v)
+    }
+    setTimeout(()=>{$('modalInput').focus();$('modalInput').select()},100)
+    $('modalAction').onclick=modalHandlers.action
+    $('modalInput').onkeydown=e=>{if(e.key==='Enter')modalHandlers.action()}
+  }
+  
+  else if(type==='editCard'){
+    const {id,colId}=data
+    const col=state.allColumns.find(c=>c.id===colId)
+    const card=col?.cards?.find(c=>c.id===id)
+    if(!card)return
+    body.innerHTML=`
+      <h2>Edit Card</h2>
+      <label>Title</label>
+      <input id="modalInput" value="${esc(card.title)}" maxlength="200" autofocus/>
+      <label>Description</label>
+      <textarea id="modalDesc" rows="3">${esc(card.description||'')}</textarea>
+      <label>Due date</label>
+      <input id="modalDue" type="date" value="${card.due_date?card.due_date.slice(0,10):''}"/>
+      <div class="modal-actions">
+        <button class="danger" onclick="deleteCard(${id});closeModal()">Delete</button>
+        <button class="sec" onclick="closeModal()">Cancel</button>
+        <button class="prim" id="modalAction">Save</button>
+      </div>`
+    modalHandlers.action = async ()=>{
+      const t=$('modalInput').value.trim()
+      if(!t)return
+      const bodyP={title:t}
+      const desc=$('modalDesc').value.trim()
+      if(desc!==card.description)bodyP.description=desc
+      const due=$('modalDue').value||null
+      if(due!==(card.due_date?card.due_date.slice(0,10):null))bodyP.due_date=due
+      closeModal()
+      await api(`/api/cards/${id}`,{method:'PUT',body:JSON.stringify(bodyP)})
+      await renderBoard()
+      toast('Card updated')
+    }
+    setTimeout(()=>{$('modalInput').focus();$('modalInput').select()},100)
+    $('modalAction').onclick=modalHandlers.action
+  }
+  
+  else if(type==='addCol'){
+    body.innerHTML=`
+      <h2>New Column</h2>
+      <label>Column name</label>
+      <input id="modalInput" placeholder="e.g. Review" maxlength="100" autofocus/>
+      <div class="modal-actions">
+        <button class="sec" onclick="closeModal()">Cancel</button>
+        <button class="prim" id="modalAction">Add</button>
+      </div>`
+    modalHandlers.action = async ()=>{
+      const v=$('modalInput').value.trim()
+      if(!v)return
+      closeModal()
+      if(!state.activeBoardId)return toast('Create a board first')
+      const cols=await loadBoard(state.activeBoardId)
+      await api('/api/columns',{method:'POST',body:JSON.stringify({board_id:state.activeBoardId,title:v,position:(cols.length||0)+1})})
+      await renderBoard()
+      toast(`Column "${v}" added`)
+    }
+    setTimeout(()=>{$('modalInput').focus();$('modalInput').select()},100)
+    $('modalAction').onclick=modalHandlers.action
+    $('modalInput').onkeydown=e=>{if(e.key==='Enter')modalHandlers.action()}
+  }
 }
 
-function showNewBoard(){
-  $('boardModal').classList.add('open')
-  $('newBoardTitle').value=''
-  setTimeout(()=>$('newBoardTitle').focus(),100)
+function closeModal(e){
+  if(e && e.target!==$('modalOverlay')) return // only close when clicking overlay (or call directly)
+  $('modalOverlay').classList.remove('open')
 }
+window.closeModal = () => $('modalOverlay').classList.remove('open')
 
-function closeModal(){
-  $('boardModal').classList.remove('open')
-}
-
-async function createBoard(){
-  const title=$('newBoardTitle').value.trim()
-  if(!title) return
-  closeModal()
+// ═══════════════════════════════════════
+// BOARD ACTIONS
+// ═══════════════════════════════════════
+async function createBoard(title){
   await api('/api/boards',{method:'POST',body:JSON.stringify({title})})
   await reloadAll()
   toast(`Board "${title}" created`)
 }
 
+async function renameBoard(id, oldTitle){
+  const title=prompt('Rename board:', oldTitle)
+  if(!title||!title.trim()||title===oldTitle)return
+  await api(`/api/boards/${id}`,{method:'PUT',body:JSON.stringify({title:title.trim()})})
+  await reloadAll()
+  toast('Board renamed')
+}
+
 async function deleteBoard(id){
-  if(!confirm('Delete this board and all its content?')) return
+  const body=renderConfirm('Delete this board and all its cards? This cannot be undone.')
+  if(!body)return
   await api(`/api/boards/${id}`,{method:'DELETE'})
   state.boards=state.boards.filter(b=>b.id!==id)
   if(state.activeBoardId===id) state.activeBoardId=state.boards.length?state.boards[0].id:null
   await reloadAll()
+  toast('Board deleted')
 }
 
-// ── Column actions ──
-async function addColumn(){
-  if(!state.activeBoardId) return toast('Create a board first')
-  const title=prompt('Column name:')
-  if(!title||!title.trim()) return
-  const cols=await loadBoard(state.activeBoardId)
-  await api('/api/columns',{method:'POST',body:JSON.stringify({board_id:state.activeBoardId,title:title.trim(),position:(cols.length||0)+1})})
-  await renderBoard()
-  toast(`Column "${title}" added`)
+// ═══════════════════════════════════════
+// COLUMN ACTIONS
+// ═══════════════════════════════════════
+async function renameColumn(id){
+  const h=$('colTitle-'+id)
+  if(!h)return
+  const old=h.textContent
+  h.contentEditable='true'
+  h.classList.add('editing')
+  const range=document.createRange(); range.selectNodeContents(h)
+  const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range)
+  const finish=async ()=>{
+    h.contentEditable='false'
+    h.classList.remove('editing')
+    const title=h.textContent.trim()
+    if(title&&title!==old){
+      await api(`/api/columns/${id}`,{method:'PUT',body:JSON.stringify({title})})
+      toast('Column renamed')
+    }else{h.textContent=old}
+    h.removeEventListener('blur',finish)
+    h.removeEventListener('keydown',onKey)
+  }
+  const onKey=e=>{if(e.key==='Enter'){e.preventDefault();h.blur()}}
+  h.addEventListener('blur',finish)
+  h.addEventListener('keydown',onKey)
 }
 
 async function deleteColumn(id){
-  if(!confirm('Delete this column and all its cards?')) return
+  const body=renderConfirm('Delete this column and all its cards?')
+  if(!body)return
   await api(`/api/columns/${id}`,{method:'DELETE'})
   await renderBoard()
+  toast('Column deleted')
 }
 
-// ── Card actions ──
+// ═══════════════════════════════════════
+// CARD ACTIONS
+// ═══════════════════════════════════════
 function toggleCardForm(colId){
-  const form=$('cardForm-'+colId)
-  const btn=$('addBtn-'+colId)
-  const open=form.classList.toggle('open')
-  btn.style.display=open?'none':''
-  if(open) setTimeout(()=>$('cardInput-'+colId).focus(),100)
+  const form=$('cardForm-'+colId); const btn=$('addBtn-'+colId)
+  const open=form.classList.toggle('open'); btn.style.display=open?'none':''
+  if(open)setTimeout(()=>$('cardInput-'+colId).focus(),100)
 }
 
 async function addCard(colId){
   const title=$('cardInput-'+colId).value.trim()
-  if(!title) return
+  if(!title)return
   const desc=$('cardDesc-'+colId).value.trim()
   await api('/api/cards',{method:'POST',body:JSON.stringify({column_id:colId,title,description:desc})})
-  $('cardInput-'+colId).value=''
-  $('cardDesc-'+colId).value=''
+  $('cardInput-'+colId).value=''; $('cardDesc-'+colId).value=''
   toggleCardForm(colId)
   await renderBoard()
 }
 
-async function editCard(id,colId){
-  // Simple inline edit via prompt for now
-  const title=prompt('Edit title:')
-  if(title===null) return
-  await api(`/api/cards/${id}`,{method:'PUT',body:JSON.stringify({title:title.trim()})})
-  await renderBoard()
-}
-
 async function deleteCard(id){
-  if(!confirm('Delete this card?')) return
+  if(!renderConfirm('Delete this card?'))return
   await api(`/api/cards/${id}`,{method:'DELETE'})
   await renderBoard()
+  toast('Card deleted')
 }
 
-// ── Drag & Drop ──
+// ═══════════════════════════════════════
+// CONFIRM DIALOG (uses modal)
+// ═══════════════════════════════════════
+function renderConfirm(msg){
+  // Simple confirm that returns true/false synchronously
+  // We use the native confirm for now since modal confirm requires async
+  return confirm(msg)
+}
+
+// ═══════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════
 function onDragStart(e,id,fromCol){
-  state.dragData={id,fromCol,el:e.currentTarget}
+  state.dragData={id,fromCol}
   e.currentTarget.classList.add('dragging')
-  $('boardWrap').classList.add('dragging')
   e.dataTransfer.effectAllowed='move'
+  // set a ghost drag image
+  const ghost=e.currentTarget.cloneNode(true)
+  ghost.style.position='absolute';ghost.style.top='-9999px';ghost.style.pointerEvents='none'
+  document.body.appendChild(ghost)
+  e.dataTransfer.setDragImage(ghost,0,0)
+  setTimeout(()=>document.body.removeChild(ghost))
 }
 
 function onDragEnd(e){
   e.currentTarget.classList.remove('dragging')
-  $('boardWrap').classList.remove('dragging')
-  document.querySelectorAll('.card.drag-over').forEach(c=>c.classList.remove('drag-over'))
+  document.querySelectorAll('.card.drag-over,.col.drag-over').forEach(el=>el.classList.remove('drag-over'))
   state.dragData=null
 }
 
-function onDragOver(e){
+function onDragOver(e,colId){
   e.preventDefault()
   e.dataTransfer.dropEffect='move'
   const card=e.target.closest('.card')
-  if(card&&state.dragData&&Number(card.dataset.id)!==state.dragData.id){
+  if(card&&state.dragData){
     card.classList.add('drag-over')
+  }else if(e.target.closest('.col-cards')||e.target.closest('.col')){
+    // last position
   }
 }
 
-function onDragLeave(e){
+function onDragLeave(e,colId){
   const card=e.target.closest('.card')
-  if(card) card.classList.remove('drag-over')
+  if(card)card.classList.remove('drag-over')
 }
 
 async function onDrop(e,targetCol){
   e.preventDefault()
-  if(!state.dragData) return
   document.querySelectorAll('.card.drag-over').forEach(c=>c.classList.remove('drag-over'))
+  if(!state.dragData)return
   const {id,fromCol}=state.dragData
   
-  // Count current cards in target column
+  // Determine position: find card we dropped on
   const cardsEl=$('cards-'+targetCol)
-  const count=cardsEl?cardsEl.querySelectorAll('.card').length:0
-  const pos=count+1
+  if(!cardsEl){state.dragData=null;return}
+  const cards=cardsEl.querySelectorAll('.card')
   
-  if(fromCol!==targetCol){
-    try{
-      await api(`/api/cards/${id}/move`,{method:'PUT',body:JSON.stringify({column_id:targetCol,position:pos})})
-      await renderBoard()
-    }catch(e){toast('Move failed: '+e.message)}
+  // Find which card the mouse is over
+  const dropTarget=e.target.closest('.card')
+  let pos=1
+  if(dropTarget){
+    const idx=Array.from(cards).indexOf(dropTarget)
+    if(idx>=0)pos=idx+1
+    else pos=cards.length+1
+  }else{
+    pos=cards.length+1
   }
+  
+  try{
+    await api(`/api/cards/${id}/move`,{method:'PUT',body:JSON.stringify({column_id:targetCol,position:pos})})
+    await renderBoard()
+  }catch(e){toast('Move failed: '+e.message)}
   state.dragData=null
 }
 
-// ── Init ──
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
 async function reloadAll(){
   try{
     await loadBoards()
