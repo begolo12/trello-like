@@ -63,7 +63,7 @@ class CardMove(BaseModel):
 async def get_pool() -> asyncpg.Pool:
     global pool
     if pool is None:
-        pool = await asyncpg.create_pool(DB_DSN_CLEAN, min_size=1, max_size=3)
+        pool = await asyncpg.create_pool(DB_DSN_CLEAN, min_size=1, max_size=3, ssl="require")
     return pool
 
 
@@ -71,7 +71,7 @@ async def get_pool() -> asyncpg.Pool:
 async def lifespan(app: FastAPI):
     global pool, db_ready
     try:
-        pool = await asyncpg.create_pool(DB_DSN_CLEAN, min_size=1, max_size=3)
+        pool = await asyncpg.create_pool(DB_DSN_CLEAN, min_size=1, max_size=3, ssl="require")
         async with pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
         await seed_default()
@@ -352,7 +352,10 @@ async def delete_card(card_id: int):
 @app.get("/api/health")
 async def health():
     masked = DB_DSN.replace(DB_DSN.split(":")[2].split("@")[0], "***") if "@" in DB_DSN else DB_DSN
-    return {"status": "ok", "db": db_ready, "db_source": masked[:40] + "..."}
+    used_var = "POSTGRES_URL_NON_POOLING" if os.environ.get("POSTGRES_URL_NON_POOLING") else \
+               "DATABASE_URL" if os.environ.get("DATABASE_URL") else \
+               "POSTGRES_URL" if os.environ.get("POSTGRES_URL") else "fallback"
+    return {"status": "ok", "db": db_ready, "db_source": masked[:40] + "...", "env_var": used_var}
 
 
 # ── Serve frontend ────────────────────────────────────────────────
