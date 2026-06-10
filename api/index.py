@@ -347,7 +347,8 @@ async def delete_card(card_id: int):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "db": db_ready, "db_source": "DATABASE_URL" if os.environ.get("DATABASE_URL") else ("POSTGRES_URL" if os.environ.get("POSTGRES_URL") else "not set")}
+    masked = DB_DSN.replace(DB_DSN.split(":")[2].split("@")[0], "***") if "@" in DB_DSN else DB_DSN
+    return {"status": "ok", "db": db_ready, "db_source": masked[:40] + "..."}
 
 
 # ── Serve frontend ────────────────────────────────────────────────
