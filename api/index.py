@@ -11,9 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from pydantic import BaseModel
 
-DB_DSN = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://postgres:***@localhost:5432/trello_like",
+DB_DSN = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("POSTGRES_URL")
+    or "postgresql://postgres:***@localhost:5432/trello_like"
 )
 
 pool: asyncpg.Pool = None
@@ -344,7 +345,7 @@ async def delete_card(card_id: int):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "db": db_ready, "db_dsn": DB_DSN[:30] + "..." if db_ready else "not set"}
+    return {"status": "ok", "db": db_ready, "db_source": "DATABASE_URL" if os.environ.get("DATABASE_URL") else ("POSTGRES_URL" if os.environ.get("POSTGRES_URL") else "not set")}
 
 
 # ── Serve frontend ────────────────────────────────────────────────
