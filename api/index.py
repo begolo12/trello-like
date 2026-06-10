@@ -17,6 +17,7 @@ DB_DSN = os.environ.get(
 )
 
 pool: asyncpg.Pool = None
+db_ready: bool = False
 
 
 # ── Pydantic schemas ──────────────────────────────────────────────
@@ -61,9 +62,17 @@ async def get_pool() -> asyncpg.Pool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global pool
-    pool = await asyncpg.create_pool(DB_DSN, min_size=1, max_size=3)
-    await seed_default()
+    global pool, db_ready
+    try:
+        pool = await asyncpg.create_pool(DB_DSN, min_size=1, max_size=3)
+        if pool:
+            async with pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            await seed_default()
+            db_ready = True
+    except Exception as e:
+        print(f"[DB] Cannot connect: {e}")
+        db_ready = False
     yield
     if pool:
         await pool.close()
@@ -335,7 +344,7 @@ async def delete_card(card_id: int):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "db": db_ready, "db_dsn": DB_DSN[:30] + "..." if db_ready else "not set"}
 
 
 # ── Vercel handler ────────────────────────────────────────────────
