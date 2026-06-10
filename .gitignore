@@ -4,6 +4,4 @@ venv/
 .env
 .DS_Store
 *.db
-backend/__pycache__/
-
-.vercel
+.vercel/
