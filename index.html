@@ -1,200 +1,374 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Trello Like Scheduler</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
+  <title>Trello Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg: #0f172a; --panel: #111827; --card: #1f2937; --muted: #94a3b8;
-      --line: #334155; --accent: #3b82f6; --ok: #22c55e; --warn: #f59e0b;
-    }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { margin: 0; font-family: Inter, system-ui, Arial, sans-serif; background: linear-gradient(180deg, #0b1220, var(--bg)); color: #e5e7eb; }
-    header { position: sticky; top: 0; z-index: 10; background: rgba(15,23,42,.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 14px; }
-    h1 { margin: 0; font-size: 18px; }
-    .sub { color: var(--muted); font-size: 12px; }
-    .toolbar { display:flex; gap:8px; flex-wrap: wrap; margin-top: 10px; }
-    .toolbar input, .toolbar button, .panel input, .panel textarea, .panel select, .panel button {
-      border: 1px solid var(--line); background: #0b1220; color: #e5e7eb; border-radius: 10px; padding: 10px 12px; font-size: 15px;
-    }
-    .toolbar input { flex: 1; min-width: 120px; }
-    .toolbar button, .panel button { background: var(--accent); border: 0; font-weight: 700; cursor: pointer; }
-    .layout { display:flex; gap:14px; padding:14px; overflow-x:auto; align-items:flex-start; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
-    .column { width: 320px; min-width: 280px; background: rgba(17,24,39,.95); border: 1px solid var(--line); border-radius: 16px; padding: 12px; scroll-snap-align: start; }
-    .column h2 { margin: 0 0 4px; font-size: 15px; }
-    .column small { color: var(--muted); font-size: 12px; }
-    .card { background: linear-gradient(180deg, #243041, var(--card)); border: 1px solid #2f3f54; border-radius: 14px; padding: 12px; margin-top: 10px; cursor: grab; }
-    .card.dragging { opacity: .5; }
-    .card b { display:block; margin-bottom: 6px; font-size: 14px; }
-    .meta { color: var(--muted); font-size: 12px; display:flex; justify-content:space-between; gap:6px; flex-wrap:wrap; }
-    .pill { border:1px solid var(--line); border-radius:999px; padding:3px 8px; font-size:12px; }
-    .panel { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; display:grid; gap:6px; }
-    .panel textarea { min-height: 60px; resize: vertical; }
-    .dropzone { min-height: 24px; padding: 4px 0; }
-    .dropzone.over { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 12px; }
-    .status { margin-left:auto; font-size:12px; color: var(--muted); white-space:nowrap; }
-    .row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-    .actionbar { display:flex; gap:6px; margin-top: 8px; flex-wrap:wrap; }
-    .ghost { background: transparent !important; border: 1px solid var(--line) !important; }
-    .danger { background: #dc2626 !important; }
+    *,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    :root{--bg:#0a0f1e;--surface:#131a2b;--surface2:#1a2338;--border:#2a3450;--border2:#3a456a;--text:#e8edf5;--text2:#8896b5;--text3:#5a6a8a;--accent:#4f7dff;--accent2:#6b96ff;--accent-bg:rgba(79,125,255,.12);--red:#f0414a;--orange:#f5a623;--green:#34d399;--radius:10px;--radius2:14px}
+    body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+    input,textarea,select,button{font-family:inherit}
+    
+    /* Header */
+    header{position:sticky;top:0;z-index:100;background:rgba(10,15,30,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 16px}
+    .head-inner{display:flex;align-items:center;gap:12px;height:52px;max-width:100%;overflow-x:auto;overflow-y:hidden}
+    .head-inner::-webkit-scrollbar{height:0}
+    .logo{font-weight:700;font-size:16px;white-space:nowrap;flex-shrink:0;background:linear-gradient(135deg,#4f7dff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .board-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;white-space:nowrap;transition:.15s;flex-shrink:0}
+    .board-tab.active{background:var(--accent-bg);border-color:var(--accent);color:var(--accent2)}
+    .board-tab:hover{background:var(--surface2)}
+    .head-btn{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s}
+    .head-btn:hover{background:var(--surface2);color:var(--text)}
+    .head-btn.prim{background:var(--accent);border-color:var(--accent);color:#fff}
+    .head-btn.prim:hover{background:var(--accent2)}
+    
+    /* Board layout */
+    .board-wrap{display:flex;gap:16px;padding:20px;align-items:flex-start;overflow-x:auto;min-height:calc(100vh - 52px);-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+    .board-wrap::-webkit-scrollbar{height:6px}
+    .board-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+    .board-wrap.dragging *{pointer-events:none}
+    
+    /* Column */
+    .col{width:300px;min-width:270px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);display:flex;flex-direction:column;max-height:calc(100vh - 80px)}
+    .col-head{padding:12px 14px 8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+    .col-head h3{margin:0;font-size:14px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .col-count{font-size:12px;color:var(--text3);background:var(--surface2);padding:2px 8px;border-radius:10px;flex-shrink:0}
+    .col-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;border-radius:6px;transition:.15s;font-size:16px;line-height:1}
+    .col-del:hover{color:var(--red);background:rgba(240,65,74,.1)}
+    .col-cards{flex:1;overflow-y:auto;padding:8px 8px 4px;display:flex;flex-direction:column;gap:6px}
+    .col-cards::-webkit-scrollbar{width:4px}
+    .col-cards::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+    .col-add-btn{margin:8px;padding:8px;border-radius:var(--radius);border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;font-size:13px;transition:.15s;text-align:center}
+    .col-add-btn:hover{background:var(--surface2);color:var(--text2);border-color:var(--border2)}
+    
+    /* Card */
+    .card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;cursor:grab;transition:.15s,opacity .2s;position:relative}
+    .card:hover{border-color:var(--border2);background:#1e2840}
+    .card.dragging{opacity:.4;transform:scale(.97)}
+    .card.drag-over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+    .card-title{font-size:14px;font-weight:500;margin-bottom:6px;word-break:break-word}
+    .card-title[contenteditable]{outline:none;cursor:text}
+    .card-title[contenteditable]:focus{background:rgba(0,0,0,.2);border-radius:4px;padding:2px 4px;margin:-2px -4px}
+    .card-desc{font-size:12px;color:var(--text2);margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text3)}
+    .card-meta .due{color:var(--orange)}
+    .card-meta .done{color:var(--green)}
+    .card-actions{display:none;position:absolute;top:8px;right:8px;gap:4px}
+    .card:hover .card-actions{display:flex}
+    .card-actions button{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;padding:2px 6px;font-size:12px;transition:.15s}
+    .card-actions button:hover{background:var(--surface2);color:var(--text)}
+    .card-actions .del:hover{background:rgba(240,65,74,.15);color:var(--red);border-color:var(--red)}
+    
+    /* New Card Input */
+    .new-card-form{padding:8px;display:none;flex-direction:column;gap:6px}
+    .new-card-form.open{display:flex}
+    .new-card-form input,.new-card-form textarea{padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none;transition:.15s}
+    .new-card-form input:focus,.new-card-form textarea:focus{border-color:var(--accent)}
+    .new-card-form textarea{resize:vertical;min-height:50px;font-size:12px}
+    .new-card-form .form-actions{display:flex;gap:6px}
+    .new-card-form button{padding:7px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:.15s}
+    .new-card-form .save{background:var(--accent);color:#fff}
+    .new-card-form .save:hover{background:var(--accent2)}
+    .new-card-form .cancel{background:transparent;color:var(--text2);border:1px solid var(--border)}
+    .new-card-form .cancel:hover{background:var(--surface2);color:var(--text)}
+    
+    /* New Board modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.open{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:24px;width:100%;max-width:380px}
+    .modal h2{margin:0 0 16px;font-size:16px;font-weight:600}
+    .modal input{width:100%;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;outline:none;margin-bottom:12px}
+    .modal input:focus{border-color:var(--accent)}
+    .modal-actions{display:flex;gap:8px;justify-content:flex-end}
+    .modal-actions button{padding:8px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:.15s}
+    .modal-actions .prim{background:var(--accent);color:#fff}
+    .modal-actions .prim:hover{background:var(--accent2)}
+    .modal-actions .sec{background:transparent;color:var(--text2);border:1px solid var(--border)}
+    .modal-actions .sec:hover{background:var(--surface2);color:var(--text)}
+    
+    /* Toast */
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 20px;font-size:13px;color:var(--text2);z-index:300;display:none;white-space:nowrap;animation:toastIn .2s}
+    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}}
 
-    /* ── Mobile responsive ── */
-    @media (max-width: 640px) {
-      header { padding: 10px 12px; }
-      h1 { font-size: 16px; }
-      .toolbar { gap:6px; }
-      .toolbar input, .toolbar button, .panel input, .panel textarea, .panel select, .panel button {
-        padding: 10px 10px; font-size: 15px; min-height: 44px;
-      }
-      .layout {
-        flex-direction: column;
-        overflow-x: visible;
-        gap: 12px;
-        padding: 12px;
-      }
-      .column {
-        width: 100%;
-        min-width: 0;
-      }
-      .card { padding: 12px; }
-      .card b { font-size: 15px; }
-      .actionbar button {
-        min-height: 38px;
-        min-width: 60px;
-      }
-      .panel button { min-height: 44px; }
-    }
-
-    @media (max-width: 380px) {
-      .toolbar { flex-direction: column; }
-      .toolbar input { width: 100%; }
-      .row { grid-template-columns: 1fr; }
+    /* Empty state */
+    .empty-state{padding:40px;text-align:center;color:var(--text3);min-width:300px}
+    .empty-state p{font-size:14px;margin:0 0 16px}
+    
+    /* Responsive */
+    @media(max-width:640px){
+      .board-wrap{padding:12px;gap:12px}
+      .col{width:calc(100vw - 24px);min-width:0;max-height:none}
+      .head-inner{gap:8px}
+      .board-tab,.head-btn{font-size:12px;padding:5px 10px}
+      .card{padding:10px}
+      .card-actions{display:flex}
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Trello Like Scheduler</h1>
-    <div class="sub">Kanban board · drag-drop scheduling</div>
-    <div class="toolbar">
-      <input id="boardTitle" placeholder="New board title" />
-      <button onclick="createBoard()">New board</button>
-      <button class="ghost" onclick="reloadAll()">Refresh</button>
-      <span class="status" id="status">Ready</span>
+
+<header>
+  <div class="head-inner">
+    <span class="logo">Board</span>
+    <div id="boardTabs"></div>
+    <button class="head-btn" onclick="showNewBoard()">+ Board</button>
+    <button class="head-btn" onclick="addColumn()">+ Column</button>
+    <button class="head-btn" onclick="reloadAll()" title="Refresh">↻</button>
+  </div>
+</header>
+
+<main class="board-wrap" id="boardWrap"></main>
+
+<!-- New Board Modal -->
+<div class="modal-overlay" id="boardModal">
+  <div class="modal">
+    <h2>New Board</h2>
+    <input id="newBoardTitle" placeholder="Board name" maxlength="100" autofocus/>
+    <div class="modal-actions">
+      <button class="sec" onclick="closeModal()">Cancel</button>
+      <button class="prim" onclick="createBoard()">Create</button>
     </div>
-  </header>
-  <main class="layout" id="layout"></main>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script>
-let state = { boards: [], activeBoardId: null };
-let dragCard = null;
+// ── State ──
+let state = { boards: [], activeBoardId: null, dragData: null }
 
-const statusEl = () => document.getElementById('status');
-const setStatus = (t) => statusEl().textContent = t;
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+// ── Helpers ──
+const $ = id => document.getElementById(id)
+const esc = s => String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))
+const toast = (msg) => { const t=$('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500) }
 
-async function api(url, opts={}) {
-  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
-  if (!res.ok) throw new Error(await res.text());
-  return res.status === 204 ? null : res.json();
+async function api(url,opts={}){
+  const res = await fetch(url,{headers:{'Content-Type':'application/json'},...opts})
+  if(!res.ok){ try{const e=await res.json(); throw new Error(e.detail||res.statusText) }catch(e){throw e} }
+  return res.status===204?null:res.json()
 }
 
-async function loadBoards() {
-  state.boards = await api('/api/boards');
-  if (!state.activeBoardId && state.boards.length) state.activeBoardId = state.boards[0].id;
+// ── Data ──
+async function loadBoards(){
+  state.boards = await api('/api/boards')
+  if(!state.activeBoardId&&state.boards.length) state.activeBoardId=state.boards[0].id
 }
 
-async function loadBoard(boardId) {
-  return api(`/api/boards/${boardId}/columns`);
+async function loadBoard(id){
+  return api(`/api/boards/${id}/columns`)
 }
 
-function cardTemplate(c) {
-  return `
-    <div class="card" draggable="true" data-id="${c.id}" data-column="${c.column_id}" ontouchstart="touchStart(event)" ontouchend="touchEnd(event)" ondragstart="dragStart(event)" ondragend="dragEnd(event)">
-      <b>${esc(c.title)}</b>
-      <div>${esc(c.description || '')}</div>
-      <div class="meta">
-        <span>#${c.id}</span>
-        <span>${c.due_date ? 'due ' + esc(c.due_date.slice(0,10)) : 'no due date'}</span>
-      </div>
-      <div class="actionbar">
-        <button class="ghost" onclick="editCard(${c.id}, ${c.column_id}, ${JSON.stringify(c.title).replace(/</g,'\\u003c')}, ${JSON.stringify(c.description||'').replace(/</g,'\\u003c')}, ${c.due_date ? JSON.stringify(c.due_date.slice(0,10)) : 'null'})">Edit</button>
-        <button class="danger" onclick="deleteCard(${c.id})">Del</button>
-      </div>
-    </div>`;
+// ── Render ──
+function renderTabs(){
+  const c=$('boardTabs')
+  c.innerHTML=state.boards.map(b=>
+    `<button class="board-tab${b.id===state.activeBoardId?' active':''}" onclick="switchBoard(${b.id})">${esc(b.title)}</button>`
+  ).join('')
 }
 
-function columnTemplate(col) {
-  const cards = (col.cards || []).map(cardTemplate).join('');
-  return `
-    <section class="column" data-column="${col.id}" ondragover="allowDrop(event)" ondrop="dropCard(event, ${col.id})">
-      <h2>${esc(col.title)}</h2>
-      <small>${(col.cards || []).length} cards</small>
-      <div class="dropzone">${cards}</div>
-      <div class="panel">
-        <input id="title-${col.id}" placeholder="Card title" />
-        <textarea id="desc-${col.id}" placeholder="Description"></textarea>
-        <div class="row">
-          <input id="due-${col.id}" type="date" />
-          <select id="pos-${col.id}"><option value="">Auto pos</option></select>
-        </div>
-        <button onclick="addCard(${col.id})">Add card</button>
-      </div>
-    </section>`;
-}
-
-async function render() {
-  if (!state.activeBoardId) { document.getElementById('layout').innerHTML = '<div class="column" style="width:100%;min-width:0;text-align:center;padding:40px">No board — create one above</div>'; return; }
-  const cols = await loadBoard(state.activeBoardId);
-  document.getElementById('layout').innerHTML = cols.map(columnTemplate).join('');
-  cols.forEach(col => {
-    const sel = document.getElementById(`pos-${col.id}`);
-    if (!sel) return;
-    const max = (col.cards || []).length + 1;
-    for (let i=1; i<=max; i++) sel.insertAdjacentHTML('beforeend', `<option value="${i}">${i}</option>`);
-  });
-}
-
-async function reloadAll() { setStatus('Loading...'); try { await loadBoards(); await render(); setStatus('Ready'); } catch(e) { setStatus('Error'); document.getElementById('layout').innerHTML = '<div class="column" style="width:100%;min-width:0;padding:20px;text-align:center"><p>⚠ Error loading board</p><pre style="color:#ef4444;font-size:13px">'+esc(e.message)+'</pre><button onclick="reloadAll()" style="margin-top:12px">Retry</button></div>'; }}
-async function createBoard() { const title = document.getElementById('boardTitle').value.trim(); if (!title) return; await api('/api/boards', {method:'POST', body: JSON.stringify({title})}); document.getElementById('boardTitle').value=''; await reloadAll(); }
-async function addCard(columnId) { const title = document.getElementById(`title-${columnId}`).value.trim(); if (!title) return; const description = document.getElementById(`desc-${columnId}`).value.trim(); const due_date = document.getElementById(`due-${columnId}`).value || null; const position = document.getElementById(`pos-${columnId}`).value ? Number(document.getElementById(`pos-${columnId}`).value) : null; await api('/api/cards', {method:'POST', body: JSON.stringify({column_id: columnId, title, description, due_date, position})}); await reloadAll(); }
-async function editCard(id, columnId, title, description, dueDate) { const t = prompt('Title', title); if (t === null) return; const d = prompt('Description', description); if (d === null) return; const due = prompt('Due date YYYY-MM-DD', dueDate || ''); if (due === null) return; await api(`/api/cards/${id}`, {method:'PUT', body: JSON.stringify({title: t, description: d, due_date: due || null})}); await reloadAll(); }
-async function deleteCard(id) { if (!confirm('Delete card?')) return; await api(`/api/cards/${id}`, {method:'DELETE'}); await reloadAll(); }
-
-/* Drag & drop for desktop */
-function dragStart(ev) { dragCard = { id: Number(ev.target.dataset.id), from: Number(ev.target.dataset.column) }; ev.target.classList.add('dragging'); }
-function dragEnd(ev) { ev.target.classList.remove('dragging'); dragCard = null; document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('over')); }
-function allowDrop(ev) { ev.preventDefault(); }
-function dropCard(ev, columnId) { ev.preventDefault(); if (!dragCard) return; const pos = (ev.currentTarget.querySelectorAll('.card').length || 0) + 1; api(`/api/cards/${dragCard.id}/move`, {method:'PUT', body: JSON.stringify({column_id: columnId, position: pos})}).then(reloadAll).catch(e => alert(e.message)); }
-
-/* Touch support for mobile */
-let touchCard = null;
-function touchStart(ev) {
-  const card = ev.currentTarget;
-  touchCard = { id: Number(card.dataset.id), from: Number(card.dataset.column), el: card, startY: ev.touches[0].clientY };
-  card.style.opacity = '0.7';
-}
-function touchEnd(ev) {
-  if (!touchCard) return;
-  touchCard.el.style.opacity = '1';
-  const endY = ev.changedTouches[0].clientY;
-  const dy = endY - touchCard.startY;
-  // If dragged more than 40px vertically, assume move to next column
-  if (Math.abs(dy) > 40) {
-    const allCols = document.querySelectorAll('.column');
-    const currentIdx = Array.from(allCols).findIndex(c => Number(c.dataset.column) === touchCard.from);
-    const targetIdx = dy > 0 ? Math.min(currentIdx + 1, allCols.length - 1) : Math.max(currentIdx - 1, 0);
-    const targetColId = Number(allCols[targetIdx].dataset.column);
-    if (targetColId !== touchCard.from) {
-      const pos = (allCols[targetIdx].querySelectorAll('.card').length || 0) + 1;
-      api(`/api/cards/${touchCard.id}/move`, {method:'PUT', body: JSON.stringify({column_id: targetColId, position: pos})}).then(reloadAll).catch(e => alert(e.message));
-    }
+function renderBoard(){
+  const wrap=$('boardWrap')
+  if(!state.activeBoardId){
+    wrap.innerHTML=`<div class="empty-state"><p>No boards yet</p><button class="head-btn prim" onclick="showNewBoard()">Create your first board</button></div>`
+    return
   }
-  touchCard = null;
+  loadBoard(state.activeBoardId).then(cols=>{
+    wrap.innerHTML=cols.map(col=>renderColumn(col)).join('')
+  }).catch(e=>{
+    wrap.innerHTML=`<div class="empty-state"><p>⚠ ${esc(e.message)}</p><button class="head-btn" onclick="reloadAll()">Retry</button></div>`
+  })
 }
 
-reloadAll().catch(err => { console.error(err); setStatus('Error'); document.getElementById('layout').innerHTML = `<div class="column" style="width:100%;min-width:0;padding:20px;text-align:center"><p>⚠ Connection error</p><pre style="color:#ef4444;font-size:13px">${esc(err.message)}</pre><button onclick="reloadAll()" style="margin-top:12px">Retry</button></div>`; });
+function renderColumn(col){
+  const cards=(col.cards||[]).map(c=>renderCard(c)).join('')
+  return `<section class="col" data-col="${col.id}" ondragover="onDragOver(event)" ondrop="onDrop(event,${col.id})" ondragleave="onDragLeave(event)">
+    <div class="col-head">
+      <h3>${esc(col.title)}</h3>
+      <span class="col-count">${(col.cards||[]).length}</span>
+      <button class="col-del" onclick="deleteColumn(${col.id})" title="Delete column">×</button>
+    </div>
+    <div class="col-cards" id="cards-${col.id}">
+      ${cards}
+    </div>
+    <div class="new-card-form" id="cardForm-${col.id}">
+      <input id="cardInput-${col.id}" placeholder="Card title" maxlength="200"/>
+      <textarea id="cardDesc-${col.id}" placeholder="Description (optional)" rows="2"></textarea>
+      <div class="form-actions">
+        <button class="save" onclick="addCard(${col.id})">Add</button>
+        <button class="cancel" onclick="toggleCardForm(${col.id})">Cancel</button>
+      </div>
+    </div>
+    <button class="col-add-btn" id="addBtn-${col.id}" onclick="toggleCardForm(${col.id})">+ Add card</button>
+  </section>`
+}
+
+function renderCard(c){
+  return `<div class="card" draggable="true" data-id="${c.id}" data-col="${c.column_id}"
+    ondragstart="onDragStart(event,${c.id},${c.column_id})"
+    ondragend="onDragEnd(event)"
+    onclick="editCard(${c.id},${c.column_id})">
+    <div class="card-title">${esc(c.title)}</div>
+    ${c.description?`<div class="card-desc">${esc(c.description)}</div>`:''}
+    <div class="card-meta">
+      ${c.due_date?`<span class="due">● ${esc(c.due_date.slice(0,10))}</span>`:''}
+      <span>#${c.id}</span>
+    </div>
+    <div class="card-actions">
+      <button onclick="event.stopPropagation();deleteCard(${c.id})" class="del">✕</button>
+    </div>
+  </div>`
+}
+
+// ── Board actions ──
+function switchBoard(id){
+  state.activeBoardId=id
+  renderTabs()
+  renderBoard()
+}
+
+function showNewBoard(){
+  $('boardModal').classList.add('open')
+  $('newBoardTitle').value=''
+  setTimeout(()=>$('newBoardTitle').focus(),100)
+}
+
+function closeModal(){
+  $('boardModal').classList.remove('open')
+}
+
+async function createBoard(){
+  const title=$('newBoardTitle').value.trim()
+  if(!title) return
+  closeModal()
+  await api('/api/boards',{method:'POST',body:JSON.stringify({title})})
+  await reloadAll()
+  toast(`Board "${title}" created`)
+}
+
+async function deleteBoard(id){
+  if(!confirm('Delete this board and all its content?')) return
+  await api(`/api/boards/${id}`,{method:'DELETE'})
+  state.boards=state.boards.filter(b=>b.id!==id)
+  if(state.activeBoardId===id) state.activeBoardId=state.boards.length?state.boards[0].id:null
+  await reloadAll()
+}
+
+// ── Column actions ──
+async function addColumn(){
+  if(!state.activeBoardId) return toast('Create a board first')
+  const title=prompt('Column name:')
+  if(!title||!title.trim()) return
+  const cols=await loadBoard(state.activeBoardId)
+  await api('/api/columns',{method:'POST',body:JSON.stringify({board_id:state.activeBoardId,title:title.trim(),position:(cols.length||0)+1})})
+  await renderBoard()
+  toast(`Column "${title}" added`)
+}
+
+async function deleteColumn(id){
+  if(!confirm('Delete this column and all its cards?')) return
+  await api(`/api/columns/${id}`,{method:'DELETE'})
+  await renderBoard()
+}
+
+// ── Card actions ──
+function toggleCardForm(colId){
+  const form=$('cardForm-'+colId)
+  const btn=$('addBtn-'+colId)
+  const open=form.classList.toggle('open')
+  btn.style.display=open?'none':''
+  if(open) setTimeout(()=>$('cardInput-'+colId).focus(),100)
+}
+
+async function addCard(colId){
+  const title=$('cardInput-'+colId).value.trim()
+  if(!title) return
+  const desc=$('cardDesc-'+colId).value.trim()
+  await api('/api/cards',{method:'POST',body:JSON.stringify({column_id:colId,title,description:desc})})
+  $('cardInput-'+colId).value=''
+  $('cardDesc-'+colId).value=''
+  toggleCardForm(colId)
+  await renderBoard()
+}
+
+async function editCard(id,colId){
+  // Simple inline edit via prompt for now
+  const title=prompt('Edit title:')
+  if(title===null) return
+  await api(`/api/cards/${id}`,{method:'PUT',body:JSON.stringify({title:title.trim()})})
+  await renderBoard()
+}
+
+async function deleteCard(id){
+  if(!confirm('Delete this card?')) return
+  await api(`/api/cards/${id}`,{method:'DELETE'})
+  await renderBoard()
+}
+
+// ── Drag & Drop ──
+function onDragStart(e,id,fromCol){
+  state.dragData={id,fromCol,el:e.currentTarget}
+  e.currentTarget.classList.add('dragging')
+  $('boardWrap').classList.add('dragging')
+  e.dataTransfer.effectAllowed='move'
+}
+
+function onDragEnd(e){
+  e.currentTarget.classList.remove('dragging')
+  $('boardWrap').classList.remove('dragging')
+  document.querySelectorAll('.card.drag-over').forEach(c=>c.classList.remove('drag-over'))
+  state.dragData=null
+}
+
+function onDragOver(e){
+  e.preventDefault()
+  e.dataTransfer.dropEffect='move'
+  const card=e.target.closest('.card')
+  if(card&&state.dragData&&Number(card.dataset.id)!==state.dragData.id){
+    card.classList.add('drag-over')
+  }
+}
+
+function onDragLeave(e){
+  const card=e.target.closest('.card')
+  if(card) card.classList.remove('drag-over')
+}
+
+async function onDrop(e,targetCol){
+  e.preventDefault()
+  if(!state.dragData) return
+  document.querySelectorAll('.card.drag-over').forEach(c=>c.classList.remove('drag-over'))
+  const {id,fromCol}=state.dragData
+  
+  // Count current cards in target column
+  const cardsEl=$('cards-'+targetCol)
+  const count=cardsEl?cardsEl.querySelectorAll('.card').length:0
+  const pos=count+1
+  
+  if(fromCol!==targetCol){
+    try{
+      await api(`/api/cards/${id}/move`,{method:'PUT',body:JSON.stringify({column_id:targetCol,position:pos})})
+      await renderBoard()
+    }catch(e){toast('Move failed: '+e.message)}
+  }
+  state.dragData=null
+}
+
+// ── Init ──
+async function reloadAll(){
+  try{
+    await loadBoards()
+    renderTabs()
+    renderBoard()
+  }catch(e){
+    $('boardWrap').innerHTML=`<div class="empty-state"><p>⚠ ${esc(e.message)}</p><button class="head-btn" onclick="reloadAll()">Retry</button></div>`
+  }
+}
+
+reloadAll()
 </script>
 </body>
 </html>

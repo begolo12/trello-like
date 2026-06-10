@@ -96,8 +96,33 @@ app.add_middleware(
 
 
 async def seed_default():
-    """Seed demo board if none exist."""
+    """Create tables if not exist, then seed demo board."""
     async with pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS boards (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL DEFAULT 'Untitled Board',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS columns (
+                id SERIAL PRIMARY KEY,
+                board_id INTEGER NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+                title VARCHAR(255) NOT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS cards (
+                id SERIAL PRIMARY KEY,
+                column_id INTEGER NOT NULL REFERENCES columns(id) ON DELETE CASCADE,
+                title VARCHAR(255) NOT NULL,
+                description TEXT DEFAULT '',
+                due_date DATE,
+                position INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         cnt = await conn.fetchval("SELECT count(*) FROM boards")
         if cnt == 0:
             bid = await conn.fetchval(
@@ -144,6 +169,18 @@ async def create_board(data: BoardCreate):
             bid,
         )
         row = await conn.fetchrow("SELECT * FROM boards WHERE id=$1", bid)
+        return dict(row)
+
+
+@app.put("/api/boards/{board_id}")
+async def rename_board(board_id: int, data: BoardCreate):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE boards SET title=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2 RETURNING id, title, created_at, updated_at",
+            data.title, board_id,
+        )
+        if not row:
+            raise HTTPException(404, "Board not found")
         return dict(row)
 
 
