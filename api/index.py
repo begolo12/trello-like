@@ -12,7 +12,8 @@ from mangum import Mangum
 from pydantic import BaseModel
 
 DB_DSN = (
-    os.environ.get("DATABASE_URL")
+    os.environ.get("POSTGRES_URL_NON_POOLING")
+    or os.environ.get("DATABASE_URL")
     or os.environ.get("POSTGRES_URL")
     or "postgresql://postgres:***@localhost:5432/trello_like"
 )
@@ -73,6 +74,7 @@ async def lifespan(app: FastAPI):
             db_ready = True
     except Exception as e:
         print(f"[DB] Cannot connect: {e}")
+        print(f"[DB] DSN prefix match: {DB_DSN[:25]}...")
         db_ready = False
     yield
     if pool:
