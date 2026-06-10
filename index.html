@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Trello Like Scheduler</title>
+  <style>
+    :root {
+      --bg: #0f172a; --panel: #111827; --card: #1f2937; --muted: #94a3b8;
+      --line: #334155; --accent: #3b82f6; --ok: #22c55e; --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; font-family: Inter, system-ui, Arial, sans-serif; background: linear-gradient(180deg, #0b1220, var(--bg)); color: #e5e7eb; }
+    header { position: sticky; top: 0; z-index: 10; background: rgba(15,23,42,.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 12px 14px; }
+    h1 { margin: 0; font-size: 18px; }
+    .sub { color: var(--muted); font-size: 12px; }
+    .toolbar { display:flex; gap:8px; flex-wrap: wrap; margin-top: 10px; }
+    .toolbar input, .toolbar button, .panel input, .panel textarea, .panel select, .panel button {
+      border: 1px solid var(--line); background: #0b1220; color: #e5e7eb; border-radius: 10px; padding: 10px 12px; font-size: 15px;
+    }
+    .toolbar input { flex: 1; min-width: 120px; }
+    .toolbar button, .panel button { background: var(--accent); border: 0; font-weight: 700; cursor: pointer; }
+    .layout { display:flex; gap:14px; padding:14px; overflow-x:auto; align-items:flex-start; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+    .column { width: 320px; min-width: 280px; background: rgba(17,24,39,.95); border: 1px solid var(--line); border-radius: 16px; padding: 12px; scroll-snap-align: start; }
+    .column h2 { margin: 0 0 4px; font-size: 15px; }
+    .column small { color: var(--muted); font-size: 12px; }
+    .card { background: linear-gradient(180deg, #243041, var(--card)); border: 1px solid #2f3f54; border-radius: 14px; padding: 12px; margin-top: 10px; cursor: grab; }
+    .card.dragging { opacity: .5; }
+    .card b { display:block; margin-bottom: 6px; font-size: 14px; }
+    .meta { color: var(--muted); font-size: 12px; display:flex; justify-content:space-between; gap:6px; flex-wrap:wrap; }
+    .pill { border:1px solid var(--line); border-radius:999px; padding:3px 8px; font-size:12px; }
+    .panel { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; display:grid; gap:6px; }
+    .panel textarea { min-height: 60px; resize: vertical; }
+    .dropzone { min-height: 24px; padding: 4px 0; }
+    .dropzone.over { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 12px; }
+    .status { margin-left:auto; font-size:12px; color: var(--muted); white-space:nowrap; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .actionbar { display:flex; gap:6px; margin-top: 8px; flex-wrap:wrap; }
+    .ghost { background: transparent !important; border: 1px solid var(--line) !important; }
+    .danger { background: #dc2626 !important; }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 640px) {
+      header { padding: 10px 12px; }
+      h1 { font-size: 16px; }
+      .toolbar { gap:6px; }
+      .toolbar input, .toolbar button, .panel input, .panel textarea, .panel select, .panel button {
+        padding: 10px 10px; font-size: 15px; min-height: 44px;
+      }
+      .layout {
+        flex-direction: column;
+        overflow-x: visible;
+        gap: 12px;
+        padding: 12px;
+      }
+      .column {
+        width: 100%;
+        min-width: 0;
+      }
+      .card { padding: 12px; }
+      .card b { font-size: 15px; }
+      .actionbar button {
+        min-height: 38px;
+        min-width: 60px;
+      }
+      .panel button { min-height: 44px; }
+    }
+
+    @media (max-width: 380px) {
+      .toolbar { flex-direction: column; }
+      .toolbar input { width: 100%; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Trello Like Scheduler</h1>
+    <div class="sub">Kanban board · drag-drop scheduling</div>
+    <div class="toolbar">
+      <input id="boardTitle" placeholder="New board title" />
+      <button onclick="createBoard()">New board</button>
+      <button class="ghost" onclick="reloadAll()">Refresh</button>
+      <span class="status" id="status">Ready</span>
+    </div>
+  </header>
+  <main class="layout" id="layout"></main>
+
+<script>
+let state = { boards: [], activeBoardId: null };
+let dragCard = null;
+
+const statusEl = () => document.getElementById('status');
+const setStatus = (t) => statusEl().textContent = t;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+async function api(url, opts={}) {
+  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!res.ok) throw new Error(await res.text());
+  return res.status === 204 ? null : res.json();
+}
+
+async function loadBoards() {
+  state.boards = await api('/api/boards');
+  if (!state.activeBoardId && state.boards.length) state.activeBoardId = state.boards[0].id;
+}
+
+async function loadBoard(boardId) {
+  return api(`/api/boards/${boardId}/columns`);
+}
+
+function cardTemplate(c) {
+  return `
+    <div class="card" draggable="true" data-id="${c.id}" data-column="${c.column_id}" ontouchstart="touchStart(event)" ontouchend="touchEnd(event)" ondragstart="dragStart(event)" ondragend="dragEnd(event)">
+      <b>${esc(c.title)}</b>
+      <div>${esc(c.description || '')}</div>
+      <div class="meta">
+        <span>#${c.id}</span>
+        <span>${c.due_date ? 'due ' + esc(c.due_date.slice(0,10)) : 'no due date'}</span>
+      </div>
+      <div class="actionbar">
+        <button class="ghost" onclick="editCard(${c.id}, ${c.column_id}, ${JSON.stringify(c.title).replace(/</g,'\\u003c')}, ${JSON.stringify(c.description||'').replace(/</g,'\\u003c')}, ${c.due_date ? JSON.stringify(c.due_date.slice(0,10)) : 'null'})">Edit</button>
+        <button class="danger" onclick="deleteCard(${c.id})">Del</button>
+      </div>
+    </div>`;
+}
+
+function columnTemplate(col) {
+  const cards = (col.cards || []).map(cardTemplate).join('');
+  return `
+    <section class="column" data-column="${col.id}" ondragover="allowDrop(event)" ondrop="dropCard(event, ${col.id})">
+      <h2>${esc(col.title)}</h2>
+      <small>${(col.cards || []).length} cards</small>
+      <div class="dropzone">${cards}</div>
+      <div class="panel">
+        <input id="title-${col.id}" placeholder="Card title" />
+        <textarea id="desc-${col.id}" placeholder="Description"></textarea>
+        <div class="row">
+          <input id="due-${col.id}" type="date" />
+          <select id="pos-${col.id}"><option value="">Auto pos</option></select>
+        </div>
+        <button onclick="addCard(${col.id})">Add card</button>
+      </div>
+    </section>`;
+}
+
+async function render() {
+  if (!state.activeBoardId) { document.getElementById('layout').innerHTML = '<div class="column" style="width:100%;min-width:0;text-align:center;padding:40px">No board — create one above</div>'; return; }
+  const cols = await loadBoard(state.activeBoardId);
+  document.getElementById('layout').innerHTML = cols.map(columnTemplate).join('');
+  cols.forEach(col => {
+    const sel = document.getElementById(`pos-${col.id}`);
+    if (!sel) return;
+    const max = (col.cards || []).length + 1;
+    for (let i=1; i<=max; i++) sel.insertAdjacentHTML('beforeend', `<option value="${i}">${i}</option>`);
+  });
+}
+
+async function reloadAll() { setStatus('Loading...'); try { await loadBoards(); await render(); setStatus('Ready'); } catch(e) { setStatus('Error'); document.getElementById('layout').innerHTML = '<div class="column" style="width:100%;min-width:0;padding:20px;text-align:center"><p>⚠ Error loading board</p><pre style="color:#ef4444;font-size:13px">'+esc(e.message)+'</pre><button onclick="reloadAll()" style="margin-top:12px">Retry</button></div>'; }}
+async function createBoard() { const title = document.getElementById('boardTitle').value.trim(); if (!title) return; await api('/api/boards', {method:'POST', body: JSON.stringify({title})}); document.getElementById('boardTitle').value=''; await reloadAll(); }
+async function addCard(columnId) { const title = document.getElementById(`title-${columnId}`).value.trim(); if (!title) return; const description = document.getElementById(`desc-${columnId}`).value.trim(); const due_date = document.getElementById(`due-${columnId}`).value || null; const position = document.getElementById(`pos-${columnId}`).value ? Number(document.getElementById(`pos-${columnId}`).value) : null; await api('/api/cards', {method:'POST', body: JSON.stringify({column_id: columnId, title, description, due_date, position})}); await reloadAll(); }
+async function editCard(id, columnId, title, description, dueDate) { const t = prompt('Title', title); if (t === null) return; const d = prompt('Description', description); if (d === null) return; const due = prompt('Due date YYYY-MM-DD', dueDate || ''); if (due === null) return; await api(`/api/cards/${id}`, {method:'PUT', body: JSON.stringify({title: t, description: d, due_date: due || null})}); await reloadAll(); }
+async function deleteCard(id) { if (!confirm('Delete card?')) return; await api(`/api/cards/${id}`, {method:'DELETE'}); await reloadAll(); }
+
+/* Drag & drop for desktop */
+function dragStart(ev) { dragCard = { id: Number(ev.target.dataset.id), from: Number(ev.target.dataset.column) }; ev.target.classList.add('dragging'); }
+function dragEnd(ev) { ev.target.classList.remove('dragging'); dragCard = null; document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('over')); }
+function allowDrop(ev) { ev.preventDefault(); }
+function dropCard(ev, columnId) { ev.preventDefault(); if (!dragCard) return; const pos = (ev.currentTarget.querySelectorAll('.card').length || 0) + 1; api(`/api/cards/${dragCard.id}/move`, {method:'PUT', body: JSON.stringify({column_id: columnId, position: pos})}).then(reloadAll).catch(e => alert(e.message)); }
+
+/* Touch support for mobile */
+let touchCard = null;
+function touchStart(ev) {
+  const card = ev.currentTarget;
+  touchCard = { id: Number(card.dataset.id), from: Number(card.dataset.column), el: card, startY: ev.touches[0].clientY };
+  card.style.opacity = '0.7';
+}
+function touchEnd(ev) {
+  if (!touchCard) return;
+  touchCard.el.style.opacity = '1';
+  const endY = ev.changedTouches[0].clientY;
+  const dy = endY - touchCard.startY;
+  // If dragged more than 40px vertically, assume move to next column
+  if (Math.abs(dy) > 40) {
+    const allCols = document.querySelectorAll('.column');
+    const currentIdx = Array.from(allCols).findIndex(c => Number(c.dataset.column) === touchCard.from);
+    const targetIdx = dy > 0 ? Math.min(currentIdx + 1, allCols.length - 1) : Math.max(currentIdx - 1, 0);
+    const targetColId = Number(allCols[targetIdx].dataset.column);
+    if (targetColId !== touchCard.from) {
+      const pos = (allCols[targetIdx].querySelectorAll('.card').length || 0) + 1;
+      api(`/api/cards/${touchCard.id}/move`, {method:'PUT', body: JSON.stringify({column_id: targetColId, position: pos})}).then(reloadAll).catch(e => alert(e.message));
+    }
+  }
+  touchCard = null;
+}
+
+reloadAll().catch(err => { console.error(err); setStatus('Error'); document.getElementById('layout').innerHTML = `<div class="column" style="width:100%;min-width:0;padding:20px;text-align:center"><p>⚠ Connection error</p><pre style="color:#ef4444;font-size:13px">${esc(err.message)}</pre><button onclick="reloadAll()" style="margin-top:12px">Retry</button></div>`; });
+</script>
+</body>
+</html>

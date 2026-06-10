@@ -1,0 +1,3 @@
+fastapi>=0.115
+asyncpg>=0.30
+mangum>=0.19

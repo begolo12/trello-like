@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trello Like Scheduler</title>
+  <style>
+    :root {
+      --bg: #0f172a; --panel: #111827; --card: #1f2937; --muted: #94a3b8;
+      --line: #334155; --accent: #3b82f6; --ok: #22c55e; --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, Arial, sans-serif; background: linear-gradient(180deg, #0b1220, var(--bg)); color: #e5e7eb; }
+    header { position: sticky; top: 0; z-index: 10; background: rgba(15,23,42,.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 16px 20px; }
+    h1 { margin: 0; font-size: 20px; }
+    .sub { color: var(--muted); font-size: 13px; }
+    .toolbar { display:flex; gap:10px; flex-wrap: wrap; margin-top: 12px; }
+    .toolbar input, .toolbar button, .panel input, .panel textarea, .panel select, .panel button {
+      border: 1px solid var(--line); background: #0b1220; color: #e5e7eb; border-radius: 10px; padding: 10px 12px;
+    }
+    .toolbar button, .panel button { background: var(--accent); border: 0; font-weight: 700; cursor: pointer; }
+    .layout { display:flex; gap:16px; padding:20px; overflow-x:auto; align-items:flex-start; }
+    .column { width: 340px; min-width: 340px; background: rgba(17,24,39,.95); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+    .column h2 { margin: 0 0 4px; font-size: 16px; }
+    .column small { color: var(--muted); }
+    .card { background: linear-gradient(180deg, #243041, var(--card)); border: 1px solid #2f3f54; border-radius: 14px; padding: 12px; margin-top: 10px; cursor: grab; }
+    .card.dragging { opacity: .5; }
+    .card b { display:block; margin-bottom: 8px; }
+    .meta { color: var(--muted); font-size: 12px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .pill { border:1px solid var(--line); border-radius:999px; padding:3px 8px; font-size:12px; }
+    .panel { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; display:grid; gap:8px; }
+    .panel textarea { min-height: 80px; resize: vertical; }
+    .dropzone { min-height: 24px; padding: 4px 0; }
+    .dropzone.over { outline: 2px dashed var(--accent); outline-offset: 6px; border-radius: 12px; }
+    .status { margin-left:auto; font-size:12px; color: var(--muted); }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .actionbar { display:flex; gap:8px; margin-top: 8px; flex-wrap:wrap; }
+    .ghost { background: transparent !important; border: 1px solid var(--line) !important; }
+    .danger { background: #dc2626 !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Trello Like Scheduler</h1>
+    <div class="sub">Local-first app · PostgreSQL backend · drag-drop scheduling board</div>
+    <div class="toolbar">
+      <input id="boardTitle" placeholder="New board title" />
+      <button onclick="createBoard()">New board</button>
+      <button class="ghost" onclick="reloadAll()">Refresh</button>
+      <span class="status" id="status">Ready</span>
+    </div>
+  </header>
+  <main class="layout" id="layout"></main>
+
+<script>
+let state = { boards: [], activeBoardId: null };
+let dragCard = null;
+
+const statusEl = () => document.getElementById('status');
+const setStatus = (t) => statusEl().textContent = t;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+async function api(url, opts={}) {
+  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!res.ok) throw new Error(await res.text());
+  return res.status === 204 ? null : res.json();
+}
+
+async function loadBoards() {
+  state.boards = await api('/api/boards');
+  if (!state.activeBoardId && state.boards.length) state.activeBoardId = state.boards[0].id;
+}
+
+async function loadBoard(boardId) {
+  return api(`/api/boards/${boardId}/columns`);
+}
+
+function cardTemplate(c) {
+  return `
+    <div class="card" draggable="true" data-id="${c.id}" data-column="${c.column_id}" ondragstart="dragStart(event)" ondragend="dragEnd(event)">
+      <b>${esc(c.title)}</b>
+      <div>${esc(c.description || '')}</div>
+      <div class="meta">
+        <span>#${c.id}</span>
+        <span>${c.due_date ? 'due ' + esc(c.due_date.slice(0,10)) : 'no due date'}</span>
+      </div>
+      <div class="actionbar">
+        <button class="ghost" onclick="editCard(${c.id}, ${c.column_id}, ${JSON.stringify(c.title).replace(/</g,'\\u003c')}, ${JSON.stringify(c.description||'').replace(/</g,'\\u003c')}, ${c.due_date ? JSON.stringify(c.due_date.slice(0,10)) : 'null'})">Edit</button>
+        <button class="danger" onclick="deleteCard(${c.id})">Del</button>
+      </div>
+    </div>`;
+}
+
+function columnTemplate(col) {
+  const cards = (col.cards || []).map(cardTemplate).join('');
+  return `
+    <section class="column" data-column="${col.id}" ondragover="allowDrop(event)" ondrop="dropCard(event, ${col.id})">
+      <h2>${esc(col.title)}</h2>
+      <small>${(col.cards || []).length} cards</small>
+      <div class="dropzone">${cards}</div>
+      <div class="panel">
+        <input id="title-${col.id}" placeholder="Card title" />
+        <textarea id="desc-${col.id}" placeholder="Description"></textarea>
+        <div class="row">
+          <input id="due-${col.id}" type="date" />
+          <select id="pos-${col.id}"><option value="">Auto pos</option></select>
+        </div>
+        <button onclick="addCard(${col.id})">Add card</button>
+      </div>
+    </section>`;
+}
+
+async function render() {
+  if (!state.activeBoardId) { document.getElementById('layout').innerHTML = '<div class="column">No board</div>'; return; }
+  const cols = await loadBoard(state.activeBoardId);
+  document.getElementById('layout').innerHTML = cols.map(columnTemplate).join('');
+  cols.forEach(col => {
+    const sel = document.getElementById(`pos-${col.id}`);
+    if (!sel) return;
+    const max = (col.cards || []).length + 1;
+    for (let i=1; i<=max; i++) sel.insertAdjacentHTML('beforeend', `<option value="${i}">${i}</option>`);
+  });
+}
+
+async function reloadAll() { setStatus('Loading...'); await loadBoards(); await render(); setStatus('Ready'); }
+async function createBoard() { const title = document.getElementById('boardTitle').value.trim(); if (!title) return; await api('/api/boards', {method:'POST', body: JSON.stringify({title})}); document.getElementById('boardTitle').value=''; await reloadAll(); }
+async function addCard(columnId) { const title = document.getElementById(`title-${columnId}`).value.trim(); if (!title) return; const description = document.getElementById(`desc-${columnId}`).value.trim(); const due_date = document.getElementById(`due-${columnId}`).value || null; const position = document.getElementById(`pos-${columnId}`).value ? Number(document.getElementById(`pos-${columnId}`).value) : null; await api('/api/cards', {method:'POST', body: JSON.stringify({column_id: columnId, title, description, due_date, position})}); await reloadAll(); }
+async function editCard(id, columnId, title, description, dueDate) { const t = prompt('Title', title); if (t === null) return; const d = prompt('Description', description); if (d === null) return; const due = prompt('Due date YYYY-MM-DD', dueDate || ''); if (due === null) return; await api(`/api/cards/${id}`, {method:'PUT', body: JSON.stringify({title: t, description: d, due_date: due || null})}); await reloadAll(); }
+async function deleteCard(id) { if (!confirm('Delete card?')) return; await api(`/api/cards/${id}`, {method:'DELETE'}); await reloadAll(); }
+function dragStart(ev) { dragCard = { id: Number(ev.target.dataset.id), from: Number(ev.target.dataset.column) }; ev.target.classList.add('dragging'); }
+function dragEnd(ev) { ev.target.classList.remove('dragging'); dragCard = null; document.querySelectorAll('.dropzone').forEach(z => z.classList.remove('over')); }
+function allowDrop(ev) { ev.preventDefault(); }
+function dropCard(ev, columnId) { ev.preventDefault(); if (!dragCard) return; const pos = (ev.currentTarget.querySelectorAll('.card').length || 0) + 1; api(`/api/cards/${dragCard.id}/move`, {method:'PUT', body: JSON.stringify({column_id: columnId, position: pos})}).then(reloadAll).catch(e => alert(e.message)); }
+reloadAll().catch(err => { console.error(err); setStatus('Error'); document.getElementById('layout').innerHTML = `<div class="column"><pre>${esc(err.message)}</pre></div>`; });
+</script>
+</body>
+</html>
