@@ -160,6 +160,11 @@ async def seed_default():
                 UNIQUE (card_id, assignee)
             )
         """)
+        # Add archived column if table already exists without it
+        try:
+            await conn.execute("ALTER TABLE cards ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE")
+        except Exception:
+            pass
         cnt = await conn.fetchval("SELECT count(*) FROM boards")
         if cnt == 0:
             bid = await conn.fetchval(
