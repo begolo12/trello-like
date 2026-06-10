@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from pydantic import BaseModel
@@ -56,6 +56,24 @@ class CardUpdate(BaseModel):
 class CardMove(BaseModel):
     column_id: int
     position: int
+
+class CardReorder(BaseModel):
+    """Reorder card within same column — position only."""
+    position: int
+
+class CardArchive(BaseModel):
+    archived: bool = True
+
+class LabelCreate(BaseModel):
+    name: str
+    color: str = "#3b82f6"
+
+class LabelUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+class CardAssigneeUpdate(BaseModel):
+    assignee: str
 
 
 # ── DB helpers ────────────────────────────────────────────────────
@@ -119,8 +137,27 @@ async def seed_default():
                 description TEXT DEFAULT '',
                 due_date DATE,
                 position INTEGER NOT NULL DEFAULT 0,
+                archived BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS labels (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                color VARCHAR(7) NOT NULL DEFAULT '#3b82f6',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS card_labels (
+                card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+                label_id INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+                PRIMARY KEY (card_id, label_id)
+            );
+            CREATE TABLE IF NOT EXISTS card_assignees (
+                id SERIAL PRIMARY KEY,
+                card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+                assignee VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (card_id, assignee)
             )
         """)
         cnt = await conn.fetchval("SELECT count(*) FROM boards")
@@ -144,6 +181,34 @@ async def seed_default():
                           ($3, 'Deploy to staging', 'Verify everything works', 1)""",
                 cids[0]["id"], cids[1]["id"], cids[2]["id"],
             )
+
+
+# ── Helper: enrich card row with labels and assignees ───────────────
+
+CARD_SELECT = """SELECT id, column_id, title, description, position,
+                        archived, due_date::text AS due_date,
+                        created_at, updated_at
+                 FROM cards"""
+
+async def enrich_card(conn, row: dict) -> dict:
+    """Fetch labels and assignees for a card row."""
+    labels = await conn.fetch(
+        """SELECT l.id, l.name, l.color
+           FROM labels l
+           JOIN card_labels cl ON cl.label_id = l.id
+           WHERE cl.card_id = $1
+           ORDER BY l.name""",
+        row["id"],
+    )
+    assignees = await conn.fetch(
+        "SELECT id, assignee, created_at FROM card_assignees WHERE card_id = $1 ORDER BY id",
+        row["id"],
+    )
+    return {
+        **row,
+        "labels": [dict(lb) for lb in labels],
+        "assignees": [dict(a) for a in assignees],
+    }
 
 
 # ── Board endpoints ───────────────────────────────────────────────
@@ -205,13 +270,13 @@ async def list_columns(board_id: int):
         result = []
         for r in rows:
             cards = await conn.fetch(
-                """SELECT id, column_id, title, description, position,
-                          due_date::text AS due_date, created_at, updated_at
-                   FROM cards WHERE column_id = $1
+                f"""{CARD_SELECT}
+                   WHERE column_id = $1
                    ORDER BY position, id""",
                 r["id"],
             )
-            result.append({**dict(r), "cards": [dict(c) for c in cards]})
+            enriched = [await enrich_card(conn, dict(c)) for c in cards]
+            result.append({**dict(r), "cards": enriched})
         return result
 
 
@@ -253,12 +318,11 @@ async def delete_column(column_id: int):
 async def list_cards(column_id: int):
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT id, column_id, title, description, position,
-                      due_date::text AS due_date, created_at, updated_at
-               FROM cards WHERE column_id = $1 ORDER BY position, id""",
+            f"""{CARD_SELECT}
+               WHERE column_id = $1 ORDER BY position, id""",
             column_id,
         )
-        return [dict(r) for r in rows]
+        return [await enrich_card(conn, dict(r)) for r in rows]
 
 
 @app.post("/api/cards", status_code=201)
@@ -276,12 +340,10 @@ async def create_card(data: CardCreate):
             data.column_id, data.title, data.description, pos, data.due_date,
         )
         row = await conn.fetchrow(
-            """SELECT id, column_id, title, description, position,
-                      due_date::text AS due_date, created_at, updated_at
-               FROM cards WHERE id=$1""",
+            f"{CARD_SELECT} WHERE id=$1",
             cid,
         )
-        return dict(row)
+        return await enrich_card(conn, dict(row))
 
 
 @app.put("/api/cards/{card_id}")
@@ -309,14 +371,12 @@ async def update_card(card_id: int, data: CardUpdate):
                 *args,
             )
         row = await conn.fetchrow(
-            """SELECT id, column_id, title, description, position,
-                      due_date::text AS due_date, created_at, updated_at
-               FROM cards WHERE id=$1""",
+            f"{CARD_SELECT} WHERE id=$1",
             card_id,
         )
         if not row:
             raise HTTPException(404, "Card not found")
-        return dict(row)
+        return await enrich_card(conn, dict(row))
 
 
 @app.put("/api/cards/{card_id}/move")
@@ -362,12 +422,10 @@ async def move_card(card_id: int, data: CardMove):
             )
 
         row = await conn.fetchrow(
-            """SELECT id, column_id, title, description, position,
-                      due_date::text AS due_date, created_at, updated_at
-               FROM cards WHERE id=$1""",
+            f"{CARD_SELECT} WHERE id=$1",
             card_id,
         )
-        return dict(row)
+        return await enrich_card(conn, dict(row))
 
 
 @app.delete("/api/cards/{card_id}", status_code=204)
@@ -382,6 +440,222 @@ async def delete_card(card_id: int):
                 "UPDATE cards SET position = position - 1 WHERE column_id = $1 AND position > $2",
                 row["column_id"], row["position"],
             )
+
+
+# ── Card archive ──────────────────────────────────────────────────
+
+@app.put("/api/cards/{card_id}/archive")
+async def archive_card(card_id: int, data: CardArchive):
+    """Archive or unarchive a card."""
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE cards SET archived = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id",
+            data.archived, card_id,
+        )
+        if not row:
+            raise HTTPException(404, "Card not found")
+        row = await conn.fetchrow(f"{CARD_SELECT} WHERE id=$1", card_id)
+        return await enrich_card(conn, dict(row))
+
+
+# ── Card reorder within same column ───────────────────────────────
+
+@app.put("/api/cards/{card_id}/reorder")
+async def reorder_card(card_id: int, data: CardReorder):
+    """Reorder card within same column by setting new position."""
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                "SELECT id, column_id, position FROM cards WHERE id=$1 FOR UPDATE", card_id
+            )
+            if not row:
+                raise HTTPException(404, "Card not found")
+
+            column_id = row["column_id"]
+            old_pos = row["position"]
+            new_pos = data.position
+
+            if new_pos == old_pos:
+                row = await conn.fetchrow(f"{CARD_SELECT} WHERE id=$1", card_id)
+                return await enrich_card(conn, dict(row))
+
+            if new_pos > old_pos:
+                await conn.execute(
+                    "UPDATE cards SET position = position - 1 WHERE column_id = $1 AND position > $2 AND position <= $3",
+                    column_id, old_pos, new_pos,
+                )
+            else:
+                await conn.execute(
+                    "UPDATE cards SET position = position + 1 WHERE column_id = $1 AND position >= $2 AND position < $3",
+                    column_id, new_pos, old_pos,
+                )
+
+            await conn.execute(
+                "UPDATE cards SET position = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+                new_pos, card_id,
+            )
+
+        row = await conn.fetchrow(f"{CARD_SELECT} WHERE id=$1", card_id)
+        return await enrich_card(conn, dict(row))
+
+
+# ── Label endpoints ───────────────────────────────────────────────
+
+@app.get("/api/labels")
+async def list_labels():
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, name, color, created_at FROM labels ORDER BY name"
+        )
+        return [dict(r) for r in rows]
+
+
+@app.post("/api/labels", status_code=201)
+async def create_label(data: LabelCreate):
+    async with pool.acquire() as conn:
+        lid = await conn.fetchval(
+            "INSERT INTO labels(name, color) VALUES ($1, $2) RETURNING id",
+            data.name, data.color,
+        )
+        row = await conn.fetchrow("SELECT id, name, color, created_at FROM labels WHERE id=$1", lid)
+        return dict(row)
+
+
+@app.put("/api/labels/{label_id}")
+async def update_label(label_id: int, data: LabelUpdate):
+    async with pool.acquire() as conn:
+        sets = []
+        args = []
+        i = 1
+        if data.name is not None:
+            sets.append(f"name = ${i}")
+            args.append(data.name)
+            i += 1
+        if data.color is not None:
+            sets.append(f"color = ${i}")
+            args.append(data.color)
+            i += 1
+        if sets:
+            args.append(label_id)
+            await conn.execute(
+                f"UPDATE labels SET {', '.join(sets)} WHERE id = ${i}",
+                *args,
+            )
+        row = await conn.fetchrow("SELECT id, name, color, created_at FROM labels WHERE id=$1", label_id)
+        if not row:
+            raise HTTPException(404, "Label not found")
+        return dict(row)
+
+
+@app.delete("/api/labels/{label_id}", status_code=204)
+async def delete_label(label_id: int):
+    async with pool.acquire() as conn:
+        r = await conn.execute("DELETE FROM labels WHERE id=$1", label_id)
+        if r == "DELETE 0":
+            raise HTTPException(404, "Label not found")
+
+
+# ── Card-Label endpoints ──────────────────────────────────────────
+
+@app.post("/api/cards/{card_id}/labels", status_code=201)
+async def add_card_label(card_id: int, data: LabelCreate):
+    """Add a label to a card. Creates the label first if it doesn't exist,
+    or reuses an existing label with the same name."""
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT id FROM cards WHERE id=$1", card_id)
+        if not row:
+            raise HTTPException(404, "Card not found")
+
+        existing = await conn.fetchrow("SELECT id FROM labels WHERE name=$1", data.name)
+        if existing:
+            label_id = existing["id"]
+            if data.color:
+                await conn.execute("UPDATE labels SET color=$1 WHERE id=$2", data.color, label_id)
+        else:
+            label_id = await conn.fetchval(
+                "INSERT INTO labels(name, color) VALUES ($1, $2) RETURNING id",
+                data.name, data.color,
+            )
+
+        await conn.execute(
+            "INSERT INTO card_labels(card_id, label_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            card_id, label_id,
+        )
+
+        label = await conn.fetchrow(
+            "SELECT id, name, color, created_at FROM labels WHERE id=$1", label_id
+        )
+        return dict(label)
+
+
+@app.delete("/api/cards/{card_id}/labels/{label_id}", status_code=204)
+async def remove_card_label(card_id: int, label_id: int):
+    async with pool.acquire() as conn:
+        r = await conn.execute(
+            "DELETE FROM card_labels WHERE card_id=$1 AND label_id=$2",
+            card_id, label_id,
+        )
+        if r == "DELETE 0":
+            raise HTTPException(404, "Card-label association not found")
+
+
+# ── Card Assignee endpoints ───────────────────────────────────────
+
+@app.get("/api/cards/{card_id}/assignees")
+async def list_card_assignees(card_id: int):
+    async with pool.acquire() as conn:
+        card = await conn.fetchrow("SELECT id FROM cards WHERE id=$1", card_id)
+        if not card:
+            raise HTTPException(404, "Card not found")
+        rows = await conn.fetch(
+            "SELECT id, assignee, created_at FROM card_assignees WHERE card_id = $1 ORDER BY id",
+            card_id,
+        )
+        return [dict(r) for r in rows]
+
+
+@app.post("/api/cards/{card_id}/assignees", status_code=201)
+async def add_card_assignee(card_id: int, data: CardAssigneeUpdate):
+    async with pool.acquire() as conn:
+        card = await conn.fetchrow("SELECT id FROM cards WHERE id=$1", card_id)
+        if not card:
+            raise HTTPException(404, "Card not found")
+        aid = await conn.fetchval(
+            "INSERT INTO card_assignees(card_id, assignee) VALUES ($1, $2) ON CONFLICT (card_id, assignee) DO UPDATE SET assignee=EXCLUDED.assignee RETURNING id",
+            card_id, data.assignee,
+        )
+        row = await conn.fetchrow(
+            "SELECT id, assignee, created_at FROM card_assignees WHERE id=$1", aid
+        )
+        return dict(row)
+
+
+@app.delete("/api/cards/{card_id}/assignees/{assignee_id}", status_code=204)
+async def remove_card_assignee(card_id: int, assignee_id: int):
+    async with pool.acquire() as conn:
+        r = await conn.execute(
+            "DELETE FROM card_assignees WHERE id=$1 AND card_id=$2",
+            assignee_id, card_id,
+        )
+        if r == "DELETE 0":
+            raise HTTPException(404, "Assignee not found")
+
+
+# ── Search endpoint ───────────────────────────────────────────────
+
+@app.get("/api/search")
+async def search_cards(q: str = Query("", min_length=0)):
+    """Search cards by title or description. Returns enriched cards."""
+    if not q.strip():
+        return []
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"""{CARD_SELECT}
+               WHERE title ILIKE $1 OR description ILIKE $1
+               ORDER BY position, id""",
+            f"%{q}%",
+        )
+        return [await enrich_card(conn, dict(r)) for r in rows]
 
 
 # ── Health check ──────────────────────────────────────────────────
